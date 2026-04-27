@@ -1,0 +1,44 @@
+name: Process Instagram Post
+
+on:
+  workflow_dispatch:
+    inputs:
+      instagram_url:
+        description: 'Instagram post URL'
+        required: true
+        type: string
+
+jobs:
+  process:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # Required to commit notes back to repo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run processor
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          INSTAGRAM_URL: ${{ inputs.instagram_url }}
+        run: python scripts/process.py
+
+      - name: Pull latest before commit (avoid push conflicts)
+        run: git pull --rebase origin main
+
+      - name: Commit notes to repo
+        run: |
+          git config user.name "instatomdnotes-bot"
+          git config user.email "bot@instatomdnotes"
+          git add notes/
+          git diff --cached --quiet && echo "No new notes to commit" || git commit -m "note: ${{ inputs.instagram_url }}"
+          git push

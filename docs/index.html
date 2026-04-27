@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>instatomdnotes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>instatomdnotes</h1>
+    <p class="tagline">Instagram carousel → clean Markdown note</p>
+
+    <form id="submit-form">
+      <label for="url">Instagram Post URL</label>
+      <input
+        type="url"
+        id="url"
+        name="url"
+        placeholder="https://www.instagram.com/p/..."
+        required
+        autocomplete="off"
+      />
+
+      <div class="options">
+        <label><input type="checkbox" name="extract_text" checked> Extract text</label>
+        <label><input type="checkbox" name="remove_clutter" checked> Remove promotional clutter</label>
+        <label><input type="checkbox" name="add_tags" checked> Add tags</label>
+      </div>
+
+      <button type="submit" id="submit-btn">Convert</button>
+    </form>
+
+    <div id="status" class="status hidden"></div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
