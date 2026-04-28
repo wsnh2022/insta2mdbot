@@ -42,16 +42,16 @@ def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
 
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
-    images = []
     if post.typename == "GraphSidecar":
+        count = 0
         for node in post.get_sidecar_nodes():
             if not node.is_video:
                 loader.download_pic(
-                    filename=str(tmp_dir / f"slide_{len(images):02d}"),
+                    filename=str(tmp_dir / f"slide_{count:02d}"),
                     url=node.display_url,
                     mtime=post.date_local,
                 )
-                images.extend(sorted(tmp_dir.glob(f"slide_{len(images)-1:02d}*.jpg")))
+                count += 1
     else:
         loader.download_pic(
             filename=str(tmp_dir / "slide_00"),
