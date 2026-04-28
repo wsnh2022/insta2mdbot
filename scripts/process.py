@@ -21,7 +21,7 @@ Rules:
 - Extract ALL meaningful text verbatim from each slide
 - Format named sections with a descriptive title (e.g. "Rule #1: Understand Your Why", "Step 1: Do X") as ### markdown headers including the title
 - For numbered tips or points that have NO descriptive title (just a number + body text), format as a plain numbered markdown list (1. 2. 3.) — do NOT create ### headers for bare numbers
-- For two-column comparison or table layouts (e.g. Basic → Advanced, Before → After, Wrong → Right), format as a Markdown table preserving the row pairs exactly — do NOT split columns into separate lists
+- For any slide with multiple columns of items arranged side by side (e.g. BASIC/ADVANCED, WRONG/RIGHT, BEFORE/AFTER, OLD/NEW, DO/DON'T): these items are PAIRED by row position — item 1 in the left column pairs with item 1 in the right column, item 2 pairs with item 2, and so on. You MUST reconstruct this as a Markdown table. Use the column headers as table headers. Read ACROSS each row, not down each column. NEVER output the columns as two separate lists — that destroys the pairing and is always wrong for this layout type
 - Remove decorative icon artifacts that appear before list or table items — these include numbered circles like (1) (2), single symbols like ! ? → ✓ ✗, and any emoji used purely as visual decoration
 - Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", (save for later), calls to action, branding watermarks
 - Remove repetitive recap slides that only restate what was already covered
