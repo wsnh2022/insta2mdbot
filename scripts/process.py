@@ -6,6 +6,7 @@ import requests
 import instaloader
 from pathlib import Path
 from datetime import datetime
+from PIL import Image
 
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 INSTAGRAM_URL = os.environ["INSTAGRAM_URL"]
@@ -59,6 +60,13 @@ def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
         )
 
     return sorted(tmp_dir.glob("*.jpg"))
+
+
+def resize_image(path: Path, max_px: int = 768) -> Path:
+    img = Image.open(path)
+    img.thumbnail((max_px, max_px), Image.LANCZOS)
+    img.save(path, "JPEG", quality=85)
+    return path
 
 
 def encode_image(path: Path) -> str:
@@ -130,6 +138,8 @@ def main():
         print(f"[ERROR] Download failed: {e}")
         sys.exit(1)
     print(f"      Found {len(images)} image(s)")
+    images = [resize_image(p) for p in images]
+    print(f"      Resized to max 768px")
 
     if not images:
         print("[ERROR] No images found. Exiting.")
