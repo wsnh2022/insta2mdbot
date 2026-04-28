@@ -8,11 +8,19 @@ Convert Instagram carousels into clean, structured Markdown notes — automatica
 
 ## What it does
 
-Paste an Instagram post URL → the app downloads every slide of the carousel, extracts all meaningful text using a vision AI model, and saves a formatted `.md` note to a private GitHub repository. Takes about 2 minutes per post.
+Paste any Instagram post URL → the app downloads every slide of the carousel, extracts all meaningful text using a vision AI model, and saves a formatted `.md` note to a private GitHub repository. Takes about 2 minutes per post.
+
+- Paste URLs with or without tracking params (`?utm_source=...`) — they are stripped automatically
+- Handles carousels, single images, and mixed layouts
+- Two-column comparison slides (Basic → Advanced, Before → After) are formatted as Markdown tables
+- Named sections (Rule #1: Title, Step 1: Do X) become `###` headers
+- Numbered tips without titles become clean numbered lists
+- Decorative icons, slide counters, @handles, and promotional text are removed
+- AI generates a human-readable title and topic tags for every note
 
 **Output example:**
 
-```
+```markdown
 # Eight Rules for Mastering Self-Discipline
 
 **Source:** https://www.instagram.com/p/DXaZDwgDJ6I
@@ -21,10 +29,10 @@ Paste an Instagram post URL → the app downloads every slide of the carousel, e
 
 ---
 
-### Rule #1: Understand Your Why
+### Rule 1: Understand Your Why
 Self-discipline starts with clarity...
 
-### Rule #2: Train Your Mind to Delay Gratification
+### Rule 2: Train Your Mind to Delay Gratification
 ...
 ```
 
@@ -34,16 +42,21 @@ Self-discipline starts with clarity...
 
 ```
 GitHub Pages form
-      ↓  POST (passphrase protected)
+      ↓  POST { instagram_url } + passphrase header
 Cloudflare Worker
-      ↓  triggers via GitHub API
-GitHub Actions (ubuntu runner)
-      ↓  downloads carousel with instaloader
-      ↓  resizes images to 768px
-      ↓  extracts text via OpenRouter vision model
-      ↓  generates title + tags via second AI call
-      ↓  builds .md note
-Private GitHub repo (insta2mdbot-notes)
+      ↓  validates passphrase
+      ↓  rate limits (10 req/min)
+      ↓  strips tracking params, builds clean URL
+      ↓  triggers GitHub Actions via API
+GitHub Actions runner (ubuntu)
+      ↓  checks out private notes repo → notes/
+      ↓  downloads carousel slides via instaloader
+      ↓  resizes each slide to max 768px (Pillow)
+      ↓  sends all slides to OpenRouter vision model → extracted text
+      ↓  second AI call → title + tags (JSON)
+      ↓  builds .md note with title-based filename
+      ↓  commits and pushes to private notes repo
+github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 ```
 
 ---
@@ -53,20 +66,25 @@ Private GitHub repo (insta2mdbot-notes)
 | Layer | Technology |
 |-------|-----------|
 | Frontend | GitHub Pages — vanilla HTML/CSS/JS |
-| API gateway | Cloudflare Worker |
+| API gateway | Cloudflare Worker (passphrase auth + rate limiting) |
 | Backend | GitHub Actions + Python 3.11 |
 | Image download | instaloader 4.15.1 |
-| AI extraction | OpenRouter (Gemini 2.0 Flash Lite, Llama 3.2 11B fallback) |
-| Note storage | Private GitHub repo |
+| Image resize | Pillow 10.4.0 (768px max before API call) |
+| AI extraction | OpenRouter — Gemini 2.0 Flash Lite (primary), Llama 3.2 11B (fallback) |
+| AI metadata | OpenRouter — title + tags from extracted text |
+| Note storage | Separate private GitHub repo |
 
 ---
 
 ## Security
 
-- **Passphrase protected** — the form requires a secret passphrase; the Cloudflare Worker rejects all requests without it
-- **Rate limited** — max 10 requests per minute on the Worker
-- **Notes are private** — generated notes are committed to a separate private repository, not this one
-- **Secrets never in code** — GitHub PAT stored as Cloudflare Worker secret, OpenRouter key stored as GitHub Actions secret
+| Protection | How |
+|-----------|-----|
+| Passphrase on form | Worker rejects all requests without `X-Access-Key` header matching `ACCESS_KEY` secret |
+| Rate limiting | Max 10 requests per minute on the Worker |
+| Private notes | Notes committed to a separate private repo — never in this public repo |
+| No secrets in code | GitHub PAT → Cloudflare Worker secret. OpenRouter key → GitHub Actions secret |
+| URL sanitisation | Worker strips all tracking params before passing URL to Actions |
 
 ---
 
@@ -74,52 +92,31 @@ Private GitHub repo (insta2mdbot-notes)
 
 ```
 insta2mdbot/
-├── docs/               # GitHub Pages frontend
-│   ├── index.html      # Form UI
-│   ├── app.js          # Submits URL + passphrase to Worker
-│   └── style.css       # Styling
+├── docs/                        # GitHub Pages frontend
+│   ├── index.html               # Form UI (passphrase + URL fields)
+│   ├── app.js                   # Submits to Worker with X-Access-Key header
+│   └── style.css
 ├── worker/
-│   ├── index.js        # Cloudflare Worker — auth, rate limit, triggers Actions
-│   └── wrangler.toml   # Worker config
+│   ├── index.js                 # Cloudflare Worker — auth, rate limit, URL clean, trigger
+│   └── wrangler.toml            # Worker config (account_id, env vars)
 ├── scripts/
-│   └── process.py      # Downloads carousel, resizes, extracts, builds note
+│   └── process.py               # Download → resize → extract → metadata → build note
 ├── .github/workflows/
-│   └── process_post.yml  # GitHub Actions workflow
-└── requirements.txt    # Python dependencies
+│   └── process_post.yml         # Checks out notes repo, runs process.py, pushes note
+├── redeploy.bat                 # One-click Worker redeployment (reads .cloudflare-token)
+├── requirements.txt             # instaloader, requests, Pillow
+├── SETUP.md                     # Full setup guide with all known gotchas
+└── .cloudflare-token            # Your Cloudflare API token — gitignored, create manually
 ```
 
 ---
 
-## Setup (self-hosting)
+## Quick redeploy
 
-### Prerequisites
-- Cloudflare account (free tier)
-- GitHub account
-- OpenRouter API key
-- GitHub PAT with `repo` + `workflow` scopes
+Any change to `worker/index.js` requires redeploying the Worker to go live.
 
-### Steps
-
-1. **Fork this repo** and enable GitHub Pages from the `docs/` folder
-
-2. **Create a private notes repo** (e.g. `insta2mdbot-notes`) with a README
-
-3. **Add GitHub Actions secrets** to this repo:
-   - `OPENROUTER_API_KEY` — your OpenRouter key
-   - `NOTES_REPO_PAT` — your GitHub PAT
-
-4. **Deploy the Cloudflare Worker:**
-   ```powershell
-   $env:CLOUDFLARE_API_TOKEN = "your-cloudflare-token"
-   cd worker
-   npx wrangler deploy
-   npx wrangler secret put GITHUB_PAT   # paste your GitHub PAT
-   npx wrangler secret put ACCESS_KEY   # choose a passphrase for the form
-   ```
-
-5. **Update `docs/app.js` line 1** with your deployed Worker URL
-
-6. Commit and push — done
+1. Create `.cloudflare-token` in the project root with your Cloudflare API token as the only content
+2. Double-click `redeploy.bat`
 
 ---
 
@@ -130,3 +127,9 @@ instaloader==4.15.1
 requests==2.31.0
 Pillow==10.4.0
 ```
+
+---
+
+## Full setup guide
+
+See [SETUP.md](SETUP.md) for step-by-step instructions including all issues encountered during the original setup and exactly how to fix them.
