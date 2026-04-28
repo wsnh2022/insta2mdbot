@@ -132,6 +132,42 @@ Pillow==10.4.0
 
 ---
 
+## Limitations
+
+Designed for personal use — realistically 20–30 posts/day.
+
+### Cloudflare Worker
+| Limit | Value | Notes |
+|---|---|---|
+| Rate limit | 10 req/min | In-memory per instance — not a concern at personal use volumes |
+| Free tier | 100,000 req/day | Far above any personal use |
+
+### GitHub Actions
+| Limit | Value | Notes |
+|---|---|---|
+| Minutes/month | Unlimited | Workflow runs on a public repo |
+| Run duration | ~2–3 min/post | Includes Python setup and pip install each time |
+
+### OpenRouter (AI models)
+| Limit | Value | Notes |
+|---|---|---|
+| Gemini 2.0 Flash Lite | ~10–15 req/min | Primary model — most likely to 429 |
+| Llama 3.2 11B | ~20 req/min | First fallback |
+| Qwen 2.5 VL 7B | ~20 req/min | Second fallback |
+
+At 20–30 posts/day spread across the day, rate limits are rarely hit. Back-to-back rapid submissions are the only scenario that triggers 429s — the retry+fallback chain handles these automatically.
+
+### Instagram / instaloader
+| Limit | Value | Notes |
+|---|---|---|
+| Official API | None | Instaloader scrapes without OAuth |
+| 403 blocks | Unpredictable | GitHub Actions IPs are datacenter IPs — Instagram flags them occasionally |
+| Safe pace | 1 post every 2–3 min | Sustained rapid requests risk a temporary IP block on the runner |
+
+The weakest point in the stack. A 403 from Instagram means that run fails — just re-submit the URL a few minutes later.
+
+---
+
 ## Full setup guide
 
 See [SETUP.md](SETUP.md) for step-by-step instructions including all issues encountered during the original setup and exactly how to fix them.
