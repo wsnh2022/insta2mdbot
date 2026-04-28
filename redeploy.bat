@@ -28,7 +28,7 @@ echo. > "!LOG_FILE!"
 echo [%date% %time%] Deploying... >> "!LOG_FILE!"
 
 cd /d "%~dp0worker"
-npx wrangler deploy 2>&1 | tee "!LOG_FILE!"
+powershell -Command "npx wrangler deploy 2>&1 | Tee-Object -FilePath '!LOG_FILE!' -Append"
 
 echo.
 echo Output saved to redeploy.log
