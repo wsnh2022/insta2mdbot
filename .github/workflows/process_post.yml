@@ -12,11 +12,18 @@ jobs:
   process:
     runs-on: ubuntu-22.04
     permissions:
-      contents: write   # Required to commit notes back to repo
+      contents: read
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Checkout private notes repo
+        uses: actions/checkout@v4
+        with:
+          repository: wsnh2022/insta2mdbot-notes
+          token: ${{ secrets.NOTES_REPO_PAT }}
+          path: notes
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -34,10 +41,10 @@ jobs:
 
       - name: Commit and push notes
         run: |
+          cd notes
           git config user.name "instatomdnotes-bot"
           git config user.email "bot@instatomdnotes"
-          git add notes/
+          git add .
           git diff --cached --quiet && echo "No new notes to commit" && exit 0
           git commit -m "note: ${{ inputs.instagram_url }}"
-          git pull --rebase origin main
           git push
