@@ -152,6 +152,7 @@ def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
     return f"""# {title}
 
 **Source:** {url}
+**Tags:** {tag_str}
 **Date:** {date_str}
 
 ---
@@ -160,7 +161,6 @@ def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
 
 ---
 
-**Tags:** {tag_str}
 **Search Terms:** {shortcode}
 """
 
