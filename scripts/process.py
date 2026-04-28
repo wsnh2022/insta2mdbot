@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import time
 import base64
 import json
 import requests
@@ -14,6 +15,7 @@ INSTAGRAM_URL = os.environ["INSTAGRAM_URL"]
 NOTES_DIR = Path("notes")
 PRIMARY_MODEL = "google/gemini-2.0-flash-lite-001"
 FALLBACK_MODEL = "meta-llama/llama-3.2-11b-vision-instruct"
+FALLBACK_MODEL_2 = "qwen/qwen2.5-vl-7b-instruct:free"
 
 EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 
@@ -108,17 +110,32 @@ def call_openrouter(images: list[Path], model: str) -> str:
         "max_tokens": 4096,
     }
 
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=body,
-        timeout=60,
-    )
+    retry_delays = [10, 30, 60]
+    for attempt, delay in enumerate(retry_delays + [None]):
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=body,
+            timeout=60,
+        )
 
-    if resp.status_code == 401:
-        raise RuntimeError("OpenRouter API key invalid or missing.")
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+        if resp.status_code == 401:
+            raise RuntimeError("OpenRouter API key invalid or missing.")
+
+        if resp.status_code == 429:
+            if delay is not None:
+                print(f"      Rate limited (429). Retrying in {delay}s... (attempt {attempt + 1}/{len(retry_delays)})")
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"Rate limited after {len(retry_delays)} retries.")
+
+        resp.raise_for_status()
+
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+
+        return data["choices"][0]["message"]["content"]
 
 
 def get_metadata(content: str) -> dict:
@@ -140,7 +157,10 @@ def get_metadata(content: str) -> dict:
         timeout=30,
     )
     resp.raise_for_status()
-    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    data = resp.json()
+    if "error" in data:
+        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+    raw = data["choices"][0]["message"]["content"].strip()
     if "```" in raw:
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -194,18 +214,20 @@ def main():
         sys.exit(1)
 
     print(f"[2/5] Extracting text via {PRIMARY_MODEL}...")
-    try:
-        extracted = call_openrouter(images, PRIMARY_MODEL)
-        print("      Primary model succeeded.")
-    except Exception as primary_err:
-        print(f"      Primary model failed: {primary_err}")
-        print(f"[2/5] Falling back to {FALLBACK_MODEL}...")
+    extracted = None
+    for model in [PRIMARY_MODEL, FALLBACK_MODEL, FALLBACK_MODEL_2]:
         try:
-            extracted = call_openrouter(images, FALLBACK_MODEL)
-            print("      Fallback model succeeded.")
-        except Exception as fallback_err:
-            print(f"[ERROR] Fallback model also failed: {fallback_err}")
-            sys.exit(1)
+            extracted = call_openrouter(images, model)
+            print(f"      {model} succeeded.")
+            break
+        except Exception as err:
+            print(f"      {model} failed: {err}")
+            if model != FALLBACK_MODEL_2:
+                print(f"      Trying next model...")
+
+    if extracted is None:
+        print("[ERROR] All models failed. Exiting.")
+        sys.exit(1)
 
     extracted = re.sub(r'\[image-only slide\]\s*\n?', '', extracted).strip()
 
