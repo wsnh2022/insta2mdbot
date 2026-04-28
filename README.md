@@ -17,6 +17,8 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Numbered tips without titles become clean numbered lists
 - Decorative icons, slide counters, @handles, and promotional text are removed
 - AI generates a human-readable title and topic tags for every note
+- If the primary model is rate-limited (429), retries with backoff (10s → 30s → 60s) before falling to the next model
+- Three-model fallback chain — Gemini 2.0 Flash Lite → Llama 3.2 11B → Qwen 2.5 VL 7B
 
 **Output example:**
 
@@ -70,7 +72,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 | Backend | GitHub Actions + Python 3.11 |
 | Image download | instaloader 4.15.1 |
 | Image resize | Pillow 10.4.0 (768px max before API call) |
-| AI extraction | OpenRouter — Gemini 2.0 Flash Lite (primary), Llama 3.2 11B (fallback) |
+| AI extraction | OpenRouter — Gemini 2.0 Flash Lite (primary) → Llama 3.2 11B → Qwen 2.5 VL 7B (fallbacks) |
 | AI metadata | OpenRouter — title + tags from extracted text |
 | Note storage | Separate private GitHub repo |
 
