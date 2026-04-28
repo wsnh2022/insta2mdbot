@@ -2,10 +2,10 @@ name = "instatomdnotes-worker"
 main = "index.js"
 compatibility_date = "2024-01-01"
 
-# account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID"  # set via `wrangler login` or paste here
+account_id = "a0d2686f0804c32456ef0f58975e9853"
 
 [vars]
-GITHUB_REPO_OWNER = "YOUR_USERNAME"
-GITHUB_REPO_NAME = "instatomdnotes"
+GITHUB_REPO_OWNER = "wsnh2022"
+GITHUB_REPO_NAME = "insta2mdbot"
 GITHUB_WORKFLOW_FILE = "process_post.yml"
 GITHUB_REF = "main"

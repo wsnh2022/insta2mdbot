@@ -1,4 +1,4 @@
-const WORKER_URL = "https://instatomdnotes-worker.YOUR_ACCOUNT.workers.dev";
+const WORKER_URL = "https://instatomdnotes-worker.yogiswagger28.workers.dev";
 
 const form = document.getElementById("submit-form");
 const btn = document.getElementById("submit-btn");
