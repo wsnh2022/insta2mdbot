@@ -145,6 +145,13 @@ def get_metadata(content: str) -> dict:
     return json.loads(raw.strip())
 
 
+def title_to_filename(title: str) -> str:
+    slug = title.lower().strip()
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r'\s+', '-', slug)
+    return re.sub(r'-+', '-', slug).strip('-')
+
+
 def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
     shortcode = url.rstrip("/").split("/")[-1]
     date_str = datetime.now().strftime("%Y-%m-%d")
@@ -212,7 +219,7 @@ def main():
     print("[4/5] Building markdown note...")
     note_md = build_markdown(INSTAGRAM_URL, extracted, title, tags)
 
-    note_path = NOTES_DIR / f"{shortcode}.md"
+    note_path = NOTES_DIR / f"{title_to_filename(title)}.md"
     NOTES_DIR.mkdir(exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
     print(f"[5/5] Saved: {note_path}")
