@@ -45,9 +45,11 @@ export default {
 
     const { instagram_url } = body;
 
-    if (!instagram_url || !instagram_url.includes("instagram.com/p/")) {
+    const shortcodeMatch = instagram_url && instagram_url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
+    if (!shortcodeMatch) {
       return jsonResponse({ error: "Invalid Instagram URL" }, 400);
     }
+    const cleanUrl = `https://www.instagram.com/p/${shortcodeMatch[1]}/`;
 
     const githubApiUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`;
 
@@ -61,7 +63,7 @@ export default {
       },
       body: JSON.stringify({
         ref: env.GITHUB_REF,
-        inputs: { instagram_url },
+        inputs: { instagram_url: cleanUrl },
       }),
     });
 
