@@ -21,7 +21,8 @@ Rules:
 - Extract ALL meaningful text verbatim from each slide
 - Format named sections (e.g. "Rule #1", "Step 1", "Tip 1") as ### markdown headers
 - For two-column comparison or table layouts (e.g. Basic → Advanced, Before → After, Wrong → Right), format as a Markdown table preserving the row pairs exactly — do NOT split columns into separate lists
-- Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", calls to action, branding watermarks
+- Remove decorative icon artifacts that appear before list or table items — these include numbered circles like (1) (2), single symbols like ! ? → ✓ ✗, and any emoji used purely as visual decoration
+- Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", (save for later), calls to action, branding watermarks
 - Remove repetitive recap slides that only restate what was already covered
 - If a slide has no meaningful text (pure graphic/image), output nothing for it
 - Do NOT summarize. Extract and clean only.
