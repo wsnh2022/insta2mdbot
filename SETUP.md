@@ -12,8 +12,27 @@ This guide documents every step to deploy instatomdnotes from scratch, including
 | Cloudflare account (free) | cloudflare.com |
 | OpenRouter API key | openrouter.ai |
 | GitHub PAT (`repo` + `workflow` scopes) | GitHub → Settings → Developer settings → Personal access tokens |
-| Cloudflare API token ("Edit Cloudflare Workers" template) | Cloudflare → My Profile → API Tokens |
+| Cloudflare API token ("Edit Cloudflare Workers" template) | See instructions below |
 | Node.js installed | nodejs.org (for `npx wrangler`) |
+
+---
+
+### How to create the Cloudflare API token
+
+This token lets wrangler deploy and manage your Worker. You must use the correct template — a generic token will not have the right permissions.
+
+1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com)
+2. Click your profile icon (top right) → **My Profile**
+3. Click **API Tokens** in the left sidebar
+4. Click **Create Token**
+5. Find the **"Edit Cloudflare Workers"** template and click **Use template**
+6. Leave all settings as default — do not restrict by zone or IP unless you know what you're doing
+7. Click **Continue to summary** → **Create Token**
+8. **Copy the token immediately** — it is only shown once. If you lose it, you must delete and recreate it.
+
+> **Gotcha:** Do NOT use "Global API Key" — it has full account access and is a security risk. Always use a scoped API token via the template.
+
+> **Gotcha:** The token is only shown once on screen after creation. If you close the page without copying it, you cannot retrieve it — you must delete the token and create a new one.
 
 ---
 
