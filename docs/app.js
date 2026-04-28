@@ -7,6 +7,12 @@ const status = document.getElementById("status");
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const url = document.getElementById("url").value.trim();
+  const passphrase = document.getElementById("passphrase").value;
+
+  if (!passphrase) {
+    showStatus("Passphrase is required.", "error");
+    return;
+  }
 
   if (!url.includes("instagram.com/p/")) {
     showStatus("Please enter a valid Instagram post URL.", "error");
@@ -20,15 +26,22 @@ form.addEventListener("submit", async (e) => {
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Access-Key": passphrase,
+      },
       body: JSON.stringify({ instagram_url: url }),
     });
 
     const data = await resp.json();
 
     if (resp.ok && data.status === "triggered") {
-      showStatus("Submitted. Your markdown note will be ready in ~2 minutes.\nCheck your /notes folder on GitHub.", "success");
-      form.reset();
+      showStatus("Submitted. Your markdown note will be ready in ~2 minutes.", "success");
+      document.getElementById("url").value = "";
+    } else if (resp.status === 401) {
+      showStatus("Wrong passphrase.", "error");
+    } else if (resp.status === 429) {
+      showStatus("Too many requests. Wait a minute and try again.", "error");
     } else {
       showStatus(data.error || "Something went wrong. Try again.", "error");
     }

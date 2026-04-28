@@ -1,18 +1,39 @@
+// Simple in-memory rate limiter — 10 requests per minute globally
+const rateLimiter = new Map();
+
+function isRateLimited() {
+  const minute = Math.floor(Date.now() / 60000);
+  const count = (rateLimiter.get(minute) || 0) + 1;
+  rateLimiter.set(minute, count);
+  for (const key of rateLimiter.keys()) {
+    if (key < minute) rateLimiter.delete(key);
+  }
+  return count > 10;
+}
+
 export default {
   async fetch(request, env) {
-    // CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type, X-Access-Key",
         },
       });
     }
 
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
+    }
+
+    const accessKey = request.headers.get("X-Access-Key");
+    if (!accessKey || accessKey !== env.ACCESS_KEY) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+
+    if (isRateLimited()) {
+      return jsonResponse({ error: "Too many requests. Try again in a minute." }, 429);
     }
 
     let body;
@@ -45,7 +66,7 @@ export default {
     });
 
     if (resp.status === 204) {
-      return jsonResponse({ status: "triggered", message: "Processing started. Check your notes folder in ~2 minutes." });
+      return jsonResponse({ status: "triggered", message: "Processing started. Check your notes in ~2 minutes." });
     }
 
     if (resp.status === 401) {
