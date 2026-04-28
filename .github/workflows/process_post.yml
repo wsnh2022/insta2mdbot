@@ -32,13 +32,12 @@ jobs:
           INSTAGRAM_URL: ${{ inputs.instagram_url }}
         run: python scripts/process.py
 
-      - name: Pull latest before commit (avoid push conflicts)
-        run: git pull --rebase origin main
-
-      - name: Commit notes to repo
+      - name: Commit and push notes
         run: |
           git config user.name "instatomdnotes-bot"
           git config user.email "bot@instatomdnotes"
           git add notes/
-          git diff --cached --quiet && echo "No new notes to commit" || git commit -m "note: ${{ inputs.instagram_url }}"
+          git diff --cached --quiet && echo "No new notes to commit" && exit 0
+          git commit -m "note: ${{ inputs.instagram_url }}"
+          git pull --rebase origin main
           git push
