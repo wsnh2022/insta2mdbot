@@ -20,6 +20,7 @@ EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 Rules:
 - Extract ALL meaningful text verbatim from each slide
 - Format named sections (e.g. "Rule #1", "Step 1", "Tip 1") as ### markdown headers
+- For two-column comparison or table layouts (e.g. Basic → Advanced, Before → After, Wrong → Right), format as a Markdown table preserving the row pairs exactly — do NOT split columns into separate lists
 - Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", calls to action, branding watermarks
 - Remove repetitive recap slides that only restate what was already covered
 - If a slide has no meaningful text (pure graphic/image), output nothing for it
