@@ -139,7 +139,7 @@ Designed for personal use — realistically 20–30 posts/day.
 ### Cloudflare Worker
 | Limit | Value | Notes |
 |---|---|---|
-| Rate limit | 10 req/min | In-memory per instance — not a concern at personal use volumes |
+| Rate limit | 10 req/min | Counts form submissions (URLs), not carousel slides — a 15-slide post is still 1 request |
 | Free tier | 100,000 req/day | Far above any personal use |
 
 ### GitHub Actions
