@@ -161,8 +161,8 @@ def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
     tag_str = " ".join(f"#{t}" for t in tags)
     return f"""# {title}
 
-**Source:** {url}
-**Tags:** {tag_str}
+**Source:** {url}\
+**Tags:** {tag_str}\
 **Date:** {date_str}
 
 ---
