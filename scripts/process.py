@@ -19,7 +19,8 @@ EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 
 Rules:
 - Extract ALL meaningful text verbatim from each slide
-- Format named sections (e.g. "Rule #1", "Step 1", "Tip 1") as ### markdown headers
+- Format named sections with a descriptive title (e.g. "Rule #1: Understand Your Why", "Step 1: Do X") as ### markdown headers including the title
+- For numbered tips or points that have NO descriptive title (just a number + body text), format as a plain numbered markdown list (1. 2. 3.) — do NOT create ### headers for bare numbers
 - For two-column comparison or table layouts (e.g. Basic → Advanced, Before → After, Wrong → Right), format as a Markdown table preserving the row pairs exactly — do NOT split columns into separate lists
 - Remove decorative icon artifacts that appear before list or table items — these include numbered circles like (1) (2), single symbols like ! ? → ✓ ✗, and any emoji used purely as visual decoration
 - Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", (save for later), calls to action, branding watermarks
