@@ -1,4 +1,4 @@
-![cover](docs\cover.png)
+![cover](docs/cover.png)
 # INSTA_TO_MD_BOT
 
 Convert Instagram carousels into clean, structured Markdown notes - automatically.
