@@ -179,11 +179,14 @@ def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
     shortcode = url.rstrip("/").split("/")[-1]
     date_str = datetime.now().strftime("%Y-%m-%d")
     tag_str = " ".join(f"#{t}" for t in tags)
+    meta = "  \n".join([
+        f"**Source:** {url}",
+        f"**Tags:** {tag_str}",
+        f"**Date:** {date_str}",
+    ])
     return f"""# {title}
 
-**Source:** {url}\
-**Tags:** {tag_str}\
-**Date:** {date_str}
+{meta}
 
 ---
 
