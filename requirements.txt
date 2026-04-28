@@ -1,2 +1,2 @@
-instaloader==1.9.7
+instaloader==4.15.1
 requests==2.31.0
