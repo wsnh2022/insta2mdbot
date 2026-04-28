@@ -118,10 +118,33 @@ git remote add origin https://github.com/YOUR_USERNAME/instatomdnotes.git
 - Note the URL: `https://YOUR_USERNAME.github.io/instatomdnotes`
 
 ### Cloudflare Account Setup
+
+**Method A — Browser login (Mac/Linux):**
 ```bash
 wrangler login
 # This opens browser — authenticate with your Cloudflare account
 ```
+
+**Method B — API Token (Windows / if browser login fails):**
+
+`wrangler login` uses a localhost OAuth callback that Windows Firewall or antivirus often blocks. Use an API token instead:
+
+1. Go to **dash.cloudflare.com/profile/api-tokens**
+2. Click **Create Token** → use the **"Edit Cloudflare Workers"** template
+3. Click **Continue to summary** → **Create Token**
+4. Copy the token (shown only once)
+5. Set it in your terminal session:
+
+```powershell
+$env:CLOUDFLARE_API_TOKEN="your_token_here"
+```
+
+Verify it works:
+```bash
+wrangler whoami
+```
+
+> ⚠️ The `$env:CLOUDFLARE_API_TOKEN` variable only lasts for the current terminal session. Set it again each time you open a new terminal before running any `wrangler` commands. Alternatively, add it to your system environment variables permanently via Windows Settings → System → Advanced system settings → Environment Variables.
 
 > ⚠️ **Security rule from Day 0:** Your GitHub Personal Access Token (PAT) with `workflow:dispatch` scope lives ONLY in Cloudflare Worker secrets. It never touches the frontend JS or the repo source. If it's ever in the repo, rotate it immediately.
 

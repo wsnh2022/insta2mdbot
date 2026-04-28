@@ -21,7 +21,7 @@ This guide documents every step to deploy instatomdnotes from scratch, including
 
 This token lets wrangler deploy and manage your Worker. You must use the correct template — a generic token will not have the right permissions.
 
-1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com)
+1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com) or [API-TOKENS](https://dash.cloudflare.com/profile/api-tokens)
 2. Click your profile icon (top right) → **My Profile**
 3. Click **API Tokens** in the left sidebar
 4. Click **Create Token**
