@@ -1,4 +1,4 @@
-# Setup Guide — instatomdnotes
+# Setup Guide - instatomdnotes
 
 This guide documents every step to deploy instatomdnotes from scratch, including every issue encountered during the original setup and exactly how to fix them.
 
@@ -19,20 +19,20 @@ This guide documents every step to deploy instatomdnotes from scratch, including
 
 ### How to create the Cloudflare API token
 
-This token lets wrangler deploy and manage your Worker. You must use the correct template — a generic token will not have the right permissions.
+This token lets wrangler deploy and manage your Worker. You must use the correct template - a generic token will not have the right permissions.
 
 1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com) or [API-TOKENS](https://dash.cloudflare.com/profile/api-tokens)
 2. Click your profile icon (top right) → **My Profile**
 3. Click **API Tokens** in the left sidebar
 4. Click **Create Token**
 5. Find the **"Edit Cloudflare Workers"** template and click **Use template**
-6. Leave all settings as default — do not restrict by zone or IP unless you know what you're doing
+6. Leave all settings as default - do not restrict by zone or IP unless you know what you're doing
 7. Click **Continue to summary** → **Create Token**
-8. **Copy the token immediately** — it is only shown once. If you lose it, you must delete and recreate it.
+8. **Copy the token immediately** - it is only shown once. If you lose it, you must delete and recreate it.
 
-> **Gotcha:** Do NOT use "Global API Key" — it has full account access and is a security risk. Always use a scoped API token via the template.
+> **Gotcha:** Do NOT use "Global API Key" - it has full account access and is a security risk. Always use a scoped API token via the template.
 
-> **Gotcha:** The token is only shown once on screen after creation. If you close the page without copying it, you cannot retrieve it — you must delete the token and create a new one.
+> **Gotcha:** The token is only shown once on screen after creation. If you close the page without copying it, you cannot retrieve it - you must delete the token and create a new one.
 
 ---
 
@@ -69,7 +69,7 @@ Add these two secrets:
 
 Create a new **private** GitHub repository (e.g. `insta2mdbot-notes`).
 
-> **Gotcha:** When creating the repo, tick **"Add a README file"** to initialize it. If you skip this, the repo has no commits and no default branch — `actions/checkout@v4` will fail with a cryptic error when trying to clone it.
+> **Gotcha:** When creating the repo, tick **"Add a README file"** to initialize it. If you skip this, the repo has no commits and no default branch - `actions/checkout@v4` will fail with a cryptic error when trying to clone it.
 >
 > If you created it empty by mistake, initialize it via the API:
 > ```powershell
@@ -98,18 +98,18 @@ npx wrangler secret put ACCESS_KEY
 - When `secret put GITHUB_PAT` prompts, paste your GitHub PAT
 - When `secret put ACCESS_KEY` prompts, type a passphrase you will use in the form
 
-> **Gotcha: Wrangler tries to open a browser for login** — if you see "Wrangler authorization failed" in a browser popup, close it. Wrangler is trying OAuth instead of using the token. The fix: make sure `$env:CLOUDFLARE_API_TOKEN` is set **before** running any wrangler command, in the **same PowerShell window**.
+> **Gotcha: Wrangler tries to open a browser for login** - if you see "Wrangler authorization failed" in a browser popup, close it. Wrangler is trying OAuth instead of using the token. The fix: make sure `$env:CLOUDFLARE_API_TOKEN` is set **before** running any wrangler command, in the **same PowerShell window**.
 
-> **Gotcha: Wrong command syntax** — the correct command is:
+> **Gotcha: Wrong command syntax** - the correct command is:
 > ```powershell
 > npx wrangler secret put GITHUB_PAT
 > ```
 > Do NOT pass a URL or value as part of the command. Wrangler will prompt you to enter the value interactively after you run it.
 
-> **Gotcha: Token confusion** — three separate credentials are used:
-> - `CLOUDFLARE_API_TOKEN` — authenticates wrangler to Cloudflare (only needed during deployment)
-> - `GITHUB_PAT` — stored as a Worker secret; used to trigger GitHub Actions
-> - `ACCESS_KEY` — a passphrase you choose; gates access to the form
+> **Gotcha: Token confusion** - three separate credentials are used:
+> - `CLOUDFLARE_API_TOKEN` - authenticates wrangler to Cloudflare (only needed during deployment)
+> - `GITHUB_PAT` - stored as a Worker secret; used to trigger GitHub Actions
+> - `ACCESS_KEY` - a passphrase you choose; gates access to the form
 
 ---
 
@@ -146,7 +146,7 @@ git commit -m "deploy: set account_id and worker URL"
 git push
 ```
 
-> **Gotcha: git push rejected** — this project's GitHub Actions workflow commits notes back to the repo after every run, which means the remote is often ahead of your local branch. If you see `! [rejected] main -> main (fetch first)`, run:
+> **Gotcha: git push rejected** - this project's GitHub Actions workflow commits notes back to the repo after every run, which means the remote is often ahead of your local branch. If you see `! [rejected] main -> main (fetch first)`, run:
 > ```powershell
 > git stash
 > git pull --rebase origin main
@@ -177,7 +177,7 @@ git stash pop
 ### Workflow fails: `error: cannot pull with rebase: You have unstaged changes` inside GitHub Actions
 This happens when the workflow tries to `git pull --rebase` before committing the new note. The note file sitting in `notes/` is an unstaged change that blocks the rebase.
 
-Fix — in the workflow, always **commit first, then pull, then push**:
+Fix - in the workflow, always **commit first, then pull, then push**:
 ```yaml
 git add notes/
 git diff --cached --quiet && echo "No new notes" && exit 0
@@ -191,7 +191,7 @@ git push
 ### Only the first (or last) carousel image is extracted
 Bug in the download loop: the filename counter was based on `len(images)` which never incremented correctly, so every slide overwrote `slide_00.jpg`.
 
-Fix — use a separate counter variable:
+Fix - use a separate counter variable:
 ```python
 count = 0
 for node in post.get_sidecar_nodes():
@@ -222,7 +222,7 @@ and add `NOTES_REPO_PAT`.
 ### High token usage on OpenRouter (~6,000+ tokens per image)
 instaloader downloads images at full Instagram resolution (1080px+). Vision models tokenize large images into many tiles, each costing ~170 tokens.
 
-Fix — resize images to max 768px before encoding with Pillow:
+Fix - resize images to max 768px before encoding with Pillow:
 ```python
 from PIL import Image
 
@@ -241,7 +241,7 @@ This usually means a CORS preflight failure, not an actual network issue. Check 
 ---
 
 ### Notes are visible publicly on GitHub
-Free GitHub Pages requires a public repo, so the code is public. To keep notes private, push them to a **separate private repo** using a PAT. The workflow checks out the private repo to the `notes/` path before running the processor — no changes needed in the Python script.
+Free GitHub Pages requires a public repo, so the code is public. To keep notes private, push them to a **separate private repo** using a PAT. The workflow checks out the private repo to the `notes/` path before running the processor - no changes needed in the Python script.
 
 ---
 

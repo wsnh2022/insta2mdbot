@@ -1,6 +1,7 @@
+![cover](docs\cover.png)
 # INSTA_TO_MD_BOT
 
-Convert Instagram carousels into clean, structured Markdown notes — automatically.
+Convert Instagram carousels into clean, structured Markdown notes - automatically.
 
 **Live app:** https://wsnh2022.github.io/insta2mdbot/
 
@@ -10,7 +11,7 @@ Convert Instagram carousels into clean, structured Markdown notes — automatica
 
 Paste any Instagram post URL → the app downloads every slide of the carousel, extracts all meaningful text using a vision AI model, and saves a formatted `.md` note to a private GitHub repository. Takes about 2 minutes per post.
 
-- Paste URLs with or without tracking params (`?utm_source=...`) — they are stripped automatically
+- Paste URLs with or without tracking params (`?utm_source=...`) - they are stripped automatically
 - Handles carousels, single images, and mixed layouts
 - Two-column comparison slides (Basic → Advanced, Before → After) are formatted as Markdown tables
 - Named sections (Rule #1: Title, Step 1: Do X) become `###` headers
@@ -18,7 +19,7 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Decorative icons, slide counters, @handles, and promotional text are removed
 - AI generates a human-readable title and topic tags for every note
 - If the primary model is rate-limited (429), retries with backoff (10s → 30s → 60s) before falling to the next model
-- Three-model fallback chain — Gemini 2.0 Flash Lite → Llama 3.2 11B → Qwen 2.5 VL 7B
+- Three-model fallback chain - Gemini 2.0 Flash Lite → Llama 3.2 11B → Qwen 2.5 VL 7B
 
 **Output example:**
 
@@ -67,13 +68,13 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | GitHub Pages — vanilla HTML/CSS/JS |
+| Frontend | GitHub Pages - vanilla HTML/CSS/JS |
 | API gateway | Cloudflare Worker (passphrase auth + rate limiting) |
 | Backend | GitHub Actions + Python 3.11 |
 | Image download | instaloader 4.15.1 |
 | Image resize | Pillow 10.4.0 (768px max before API call) |
-| AI extraction | OpenRouter — Gemini 2.0 Flash Lite (primary) → Llama 3.2 11B → Qwen 2.5 VL 7B (fallbacks) |
-| AI metadata | OpenRouter — title + tags from extracted text |
+| AI extraction | OpenRouter - Gemini 2.0 Flash Lite (primary) → Llama 3.2 11B → Qwen 2.5 VL 7B (fallbacks) |
+| AI metadata | OpenRouter - title + tags from extracted text |
 | Note storage | Separate private GitHub repo |
 
 ---
@@ -84,7 +85,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 |-----------|-----|
 | Passphrase on form | Worker rejects all requests without `X-Access-Key` header matching `ACCESS_KEY` secret |
 | Rate limiting | Max 10 requests per minute on the Worker |
-| Private notes | Notes committed to a separate private repo — never in this public repo |
+| Private notes | Notes committed to a separate private repo - never in this public repo |
 | No secrets in code | GitHub PAT → Cloudflare Worker secret. OpenRouter key → GitHub Actions secret |
 | URL sanitisation | Worker strips all tracking params before passing URL to Actions |
 
@@ -99,7 +100,7 @@ insta2mdbot/
 │   ├── app.js                   # Submits to Worker with X-Access-Key header
 │   └── style.css
 ├── worker/
-│   ├── index.js                 # Cloudflare Worker — auth, rate limit, URL clean, trigger
+│   ├── index.js                 # Cloudflare Worker - auth, rate limit, URL clean, trigger
 │   └── wrangler.toml            # Worker config (account_id, env vars)
 ├── scripts/
 │   └── process.py               # Download → resize → extract → metadata → build note
@@ -108,7 +109,7 @@ insta2mdbot/
 ├── redeploy.bat                 # One-click Worker redeployment (reads .cloudflare-token)
 ├── requirements.txt             # instaloader, requests, Pillow
 ├── SETUP.md                     # Full setup guide with all known gotchas
-└── .cloudflare-token            # Your Cloudflare API token — gitignored, create manually
+└── .cloudflare-token            # Your Cloudflare API token - gitignored, create manually
 ```
 
 ---
@@ -134,12 +135,12 @@ Pillow==10.4.0
 
 ## Limitations
 
-Designed for personal use — realistically 20–30 posts/day.
+Designed for personal use - realistically 20–30 posts/day.
 
 ### Cloudflare Worker
 | Limit | Value | Notes |
 |---|---|---|
-| Rate limit | 10 req/min | Counts form submissions (URLs), not carousel slides — a 15-slide post is still 1 request |
+| Rate limit | 10 req/min | Counts form submissions (URLs), not carousel slides - a 15-slide post is still 1 request |
 | Free tier | 100,000 req/day | Far above any personal use |
 
 ### GitHub Actions
@@ -151,20 +152,20 @@ Designed for personal use — realistically 20–30 posts/day.
 ### OpenRouter (AI models)
 | Limit | Value | Notes |
 |---|---|---|
-| Gemini 2.0 Flash Lite | ~10–15 req/min | Primary model — most likely to 429 |
+| Gemini 2.0 Flash Lite | ~10–15 req/min | Primary model - most likely to 429 |
 | Llama 3.2 11B | ~20 req/min | First fallback |
 | Qwen 2.5 VL 7B | ~20 req/min | Second fallback |
 
-At 20–30 posts/day spread across the day, rate limits are rarely hit. Back-to-back rapid submissions are the only scenario that triggers 429s — the retry+fallback chain handles these automatically.
+At 20–30 posts/day spread across the day, rate limits are rarely hit. Back-to-back rapid submissions are the only scenario that triggers 429s - the retry+fallback chain handles these automatically.
 
 ### Instagram / instaloader
 | Limit | Value | Notes |
 |---|---|---|
 | Official API | None | Instaloader scrapes without OAuth |
-| 403 blocks | Unpredictable | GitHub Actions IPs are datacenter IPs — Instagram flags them occasionally |
+| 403 blocks | Unpredictable | GitHub Actions IPs are datacenter IPs - Instagram flags them occasionally |
 | Safe pace | 1 post every 2–3 min | Sustained rapid requests risk a temporary IP block on the runner |
 
-The weakest point in the stack. A 403 from Instagram means that run fails — just re-submit the URL a few minutes later.
+The weakest point in the stack. A 403 from Instagram means that run fails - just re-submit the URL a few minutes later.
 
 ---
 
