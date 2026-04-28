@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import base64
 import json
 import requests
@@ -14,16 +15,25 @@ NOTES_DIR = Path("notes")
 PRIMARY_MODEL = "google/gemini-2.0-flash-lite-001"
 FALLBACK_MODEL = "meta-llama/llama-3.2-11b-vision-instruct"
 
-EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel slide.
+EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 
-Your task:
-- Extract ALL text verbatim from the slide
-- Preserve lists, steps, frameworks, and examples exactly
-- Remove: calls to action ("save this", "follow me", "like this"), promotional lines, repetitive filler
+Rules:
+- Extract ALL meaningful text verbatim from each slide
+- Format named sections (e.g. "Rule #1", "Step 1", "Tip 1") as ### markdown headers
+- Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", calls to action, branding watermarks
+- Remove repetitive recap slides that only restate what was already covered
+- If a slide has no meaningful text (pure graphic/image), output nothing for it
 - Do NOT summarize. Extract and clean only.
-- Output plain text only — no commentary, no "here is the extracted text" preamble.
+- Output plain markdown only — no commentary, no preamble"""
 
-If the slide has no meaningful text (pure image/graphic), output: [image-only slide]"""
+METADATA_PROMPT = """Given this extracted Instagram carousel content, return a JSON object with exactly two keys:
+- "title": a concise 5-8 word title describing the core topic (title case, no hashtags)
+- "tags": an array of 3-5 relevant lowercase topic hashtags without the # symbol
+
+Return only valid JSON. No explanation, no markdown code block.
+
+Content:
+{content}"""
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
@@ -108,30 +118,58 @@ def call_openrouter(images: list[Path], model: str) -> str:
     return resp.json()["choices"][0]["message"]["content"]
 
 
-def build_markdown(url: str, extracted: str) -> str:
+def get_metadata(content: str) -> dict:
+    prompt = METADATA_PROMPT.format(content=content[:3000])
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/instatomdnotes",
+    }
+    body = {
+        "model": PRIMARY_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 200,
+    }
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers=headers,
+        json=body,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    if "```" in raw:
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
+
+
+def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
     shortcode = url.rstrip("/").split("/")[-1]
     date_str = datetime.now().strftime("%Y-%m-%d")
-    return f"""# {shortcode} — {date_str}
+    tag_str = " ".join(f"#{t}" for t in tags)
+    return f"""# {title}
 
 **Source:** {url}
+**Date:** {date_str}
 
 ---
-
-## Extracted Content
 
 {extracted.strip()}
 
 ---
 
-**Tags:** #instagram #extracted
+**Tags:** {tag_str}
 **Search Terms:** {shortcode}
 """
 
 
 def main():
     tmp_dir = Path("/tmp/insta_download")
+    shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
 
-    print(f"[1/4] Downloading: {INSTAGRAM_URL}")
+    print(f"[1/5] Downloading: {INSTAGRAM_URL}")
     try:
         images = download_carousel(INSTAGRAM_URL, tmp_dir)
     except Exception as e:
@@ -145,13 +183,13 @@ def main():
         print("[ERROR] No images found. Exiting.")
         sys.exit(1)
 
-    print(f"[2/4] Sending to {PRIMARY_MODEL}...")
+    print(f"[2/5] Extracting text via {PRIMARY_MODEL}...")
     try:
         extracted = call_openrouter(images, PRIMARY_MODEL)
         print("      Primary model succeeded.")
     except Exception as primary_err:
         print(f"      Primary model failed: {primary_err}")
-        print(f"[2/4] Falling back to {FALLBACK_MODEL}...")
+        print(f"[2/5] Falling back to {FALLBACK_MODEL}...")
         try:
             extracted = call_openrouter(images, FALLBACK_MODEL)
             print("      Fallback model succeeded.")
@@ -159,14 +197,25 @@ def main():
             print(f"[ERROR] Fallback model also failed: {fallback_err}")
             sys.exit(1)
 
-    print("[3/4] Building markdown note...")
-    note_md = build_markdown(INSTAGRAM_URL, extracted)
+    extracted = re.sub(r'\[image-only slide\]\s*\n?', '', extracted).strip()
 
-    shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
+    print(f"[3/5] Getting title and tags...")
+    try:
+        metadata = get_metadata(extracted)
+        title = metadata.get("title", shortcode)
+        tags = metadata.get("tags", ["instagram", "notes"])
+    except Exception as e:
+        print(f"      Metadata call failed: {e} — using defaults")
+        title = shortcode
+        tags = ["instagram", "notes"]
+
+    print("[4/5] Building markdown note...")
+    note_md = build_markdown(INSTAGRAM_URL, extracted, title, tags)
+
     note_path = NOTES_DIR / f"{shortcode}.md"
     NOTES_DIR.mkdir(exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
-    print(f"[4/4] Saved: {note_path}")
+    print(f"[5/5] Saved: {note_path}")
 
 
 if __name__ == "__main__":
