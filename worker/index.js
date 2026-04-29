@@ -17,9 +17,37 @@ export default {
       return new Response(null, {
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, X-Access-Key",
         },
+      });
+    }
+
+    if (request.method === "GET") {
+      const accessKey = request.headers.get("X-Access-Key");
+      if (!accessKey || accessKey !== env.ACCESS_KEY) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      const runsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/runs?per_page=1`;
+      const runsResp = await fetch(runsUrl, {
+        headers: {
+          "Authorization": `token ${env.GITHUB_PAT}`,
+          "Accept": "application/vnd.github.v3+json",
+          "User-Agent": "instatomdnotes-worker",
+        },
+      });
+      if (!runsResp.ok) {
+        return jsonResponse({ error: "Failed to fetch run status" }, 500);
+      }
+      const runsData = await runsResp.json();
+      const run = runsData.workflow_runs?.[0];
+      if (!run) {
+        return jsonResponse({ status: "none", message: "No runs found." });
+      }
+      return jsonResponse({
+        status: run.status,
+        conclusion: run.conclusion,
+        run_id: run.id,
       });
     }
 

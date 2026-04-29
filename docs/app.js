@@ -36,8 +36,9 @@ form.addEventListener("submit", async (e) => {
     const data = await resp.json();
 
     if (resp.ok && data.status === "triggered") {
-      showStatus("Submitted. Your markdown note will be ready in ~2 minutes.", "success");
+      showStatus("Processing... checking status in 20s.", "success");
       document.getElementById("url").value = "";
+      pollStatus(passphrase);
     } else if (resp.status === 401) {
       showStatus("Wrong passphrase.", "error");
     } else if (resp.status === 429) {
@@ -56,4 +57,43 @@ form.addEventListener("submit", async (e) => {
 function showStatus(msg, type) {
   status.textContent = msg;
   status.className = `status ${type}`;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function pollStatus(passphrase) {
+  const deadline = Date.now() + 8 * 60 * 1000;
+  await sleep(20000);
+
+  async function check() {
+    if (Date.now() > deadline) {
+      showStatus("Check your notes repo — processing may still be running.", "success");
+      return;
+    }
+    try {
+      const resp = await fetch(WORKER_URL, {
+        method: "GET",
+        headers: { "X-Access-Key": passphrase },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === "completed") {
+          if (data.conclusion === "success") {
+            showStatus("Done! Your note is saved.", "success");
+          } else {
+            showStatus("Processing failed. Try submitting again.", "error");
+          }
+          return;
+        }
+        if (data.status === "in_progress") {
+          showStatus("Still processing...", "success");
+        }
+      }
+    } catch { /* silent — keep polling */ }
+    setTimeout(check, 10000);
+  }
+
+  check();
 }

@@ -37,6 +37,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INSTAGRAM_URL: ${{ inputs.instagram_url }}
+          INSTAGRAM_SESSION_ID: ${{ secrets.INSTAGRAM_SESSION_ID }}
         run: python scripts/process.py
 
       - name: Commit and push notes
