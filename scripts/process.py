@@ -42,6 +42,12 @@ Return only valid JSON. No explanation, no markdown code block.
 Content:
 {content}"""
 
+SUMMARY_PROMPT = """Summarise this Instagram carousel content in 2-3 plain sentences. \
+Capture the core idea and single most useful takeaway. No bullet points, no formatting — plain prose only.
+
+Content:
+{content}"""
+
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
     """Download carousel images to tmp_dir. Returns sorted list of image paths."""
@@ -170,6 +176,30 @@ def get_metadata(content: str) -> dict:
     return json.loads(raw.strip())
 
 
+def get_summary(content: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/instatomdnotes",
+    }
+    body = {
+        "model": PRIMARY_MODEL,
+        "messages": [{"role": "user", "content": SUMMARY_PROMPT.format(content=content[:3000])}],
+        "max_tokens": 150,
+    }
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers=headers,
+        json=body,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if "error" in data:
+        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+    return data["choices"][0]["message"]["content"].strip()
+
+
 def title_to_filename(title: str) -> str:
     slug = title.lower().strip()
     slug = re.sub(r'[^a-z0-9\s-]', '', slug)
@@ -177,11 +207,12 @@ def title_to_filename(title: str) -> str:
     return re.sub(r'-+', '-', slug).strip('-')
 
 
-def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
+def build_markdown(url: str, extracted: str, title: str, tags: list, summary: str = "") -> str:
     date_str = datetime.now().strftime("%Y-%m-%d")
     tag_lines = "\n".join(f"  - {t}" for t in tags)
     frontmatter = f'---\ntitle: "{title}"\nsource: "{url}"\ntags:\n{tag_lines}\ndate: {date_str}\n---'
-    return f"{frontmatter}\n\n{extracted.strip()}\n"
+    summary_block = f"\n> [!summary]\n> {summary}\n" if summary else ""
+    return f"{frontmatter}{summary_block}\n{extracted.strip()}\n"
 
 
 def main():
@@ -232,7 +263,7 @@ def main():
 
     extracted = re.sub(r'\[image-only slide\]\s*\n?', '', extracted).strip()
 
-    print(f"[3/5] Getting title and tags...")
+    print(f"[3/5] Getting title, tags and summary...")
     try:
         metadata = get_metadata(extracted)
         title = metadata.get("title", shortcode)
@@ -242,11 +273,19 @@ def main():
         title = shortcode
         tags = ["instagram", "notes"]
 
-    print("[4/5] Building markdown note...")
-    note_md = build_markdown(INSTAGRAM_URL, extracted, title, tags)
+    summary = ""
+    try:
+        summary = get_summary(extracted)
+        print(f"      Summary generated.")
+    except Exception as e:
+        print(f"      Summary call failed: {e} — skipping")
 
-    note_path = NOTES_DIR / f"{title_to_filename(title)}.md"
-    NOTES_DIR.mkdir(exist_ok=True)
+    print("[4/5] Building markdown note...")
+    note_md = build_markdown(INSTAGRAM_URL, extracted, title, tags, summary)
+
+    folder = title_to_filename(tags[0]) if tags else "misc"
+    note_path = NOTES_DIR / folder / f"{title_to_filename(title)}.md"
+    note_path.parent.mkdir(parents=True, exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
     with open(processed_log, "a", encoding="utf-8") as f:
         f.write(shortcode + "\n")
