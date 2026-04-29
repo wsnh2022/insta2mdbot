@@ -178,31 +178,21 @@ def title_to_filename(title: str) -> str:
 
 
 def build_markdown(url: str, extracted: str, title: str, tags: list) -> str:
-    shortcode = url.rstrip("/").split("/")[-1]
     date_str = datetime.now().strftime("%Y-%m-%d")
-    tag_str = " ".join(f"#{t}" for t in tags)
-    meta = "  \n".join([
-        f"**Source:** {url}",
-        f"**Tags:** {tag_str}",
-        f"**Date:** {date_str}",
-    ])
-    return f"""# {title}
-
-{meta}
-
----
-
-{extracted.strip()}
-
----
-
-**Search Terms:** {shortcode}
-"""
+    tag_lines = "\n".join(f"  - {t}" for t in tags)
+    frontmatter = f'---\ntitle: "{title}"\nsource: "{url}"\ntags:\n{tag_lines}\ndate: {date_str}\n---'
+    return f"{frontmatter}\n\n{extracted.strip()}\n"
 
 
 def main():
     tmp_dir = Path("/tmp/insta_download")
     shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
+    processed_log = NOTES_DIR / "_processed.txt"
+
+    if processed_log.exists():
+        if shortcode in processed_log.read_text(encoding="utf-8").splitlines():
+            print(f"[SKIP] Already processed: {shortcode}")
+            sys.exit(0)
 
     print(f"[1/5] Downloading: {INSTAGRAM_URL}")
     try:
@@ -258,6 +248,8 @@ def main():
     note_path = NOTES_DIR / f"{title_to_filename(title)}.md"
     NOTES_DIR.mkdir(exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
+    with open(processed_log, "a", encoding="utf-8") as f:
+        f.write(shortcode + "\n")
     print(f"[5/5] Saved: {note_path}")
 
 
