@@ -1,6 +1,6 @@
-# Setup Guide - instatomdnotes
+# Setup Guide - INSTA_TO_MD_BOT
 
-This guide documents every step to deploy instatomdnotes from scratch, including every issue encountered during the original setup and exactly how to fix them.
+This guide documents every step to deploy INSTA_TO_MD_BOT from scratch, including every issue encountered during the original setup and exactly how to fix them.
 
 ---
 
@@ -264,6 +264,8 @@ Free GitHub Pages requires a public repo, so the code is public. To keep notes p
     │    1. Download carousel slides via instaloader
     │    2. Resize each slide to max 768px (Pillow)
     │    3. Send all slides to OpenRouter vision model
+    │       (chain: Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL)
+    │       (if all fail: retry full chain after 1 min, then 3 min)
     │    4. Second API call → get title + tags (JSON)
     │    5. Build .md note
     │  git commit + push → private notes repo

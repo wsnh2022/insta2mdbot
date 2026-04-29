@@ -18,8 +18,8 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Numbered tips without titles become clean numbered lists
 - Decorative icons, slide counters, @handles, and promotional text are removed
 - AI generates a human-readable title and topic tags for every note
-- If the primary model is rate-limited (429), retries with backoff (10s → 30s → 60s) before falling to the next model
-- Three-model fallback chain - Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
+- Three-model fallback chain — Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
+- If all three models fail, automatically retries the full chain after 1 min then 3 min before giving up
 
 **Output example:**
 
