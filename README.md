@@ -19,7 +19,7 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Decorative icons, slide counters, @handles, and promotional text are removed
 - AI generates a human-readable title and topic tags for every note
 - If the primary model is rate-limited (429), retries with backoff (10s → 30s → 60s) before falling to the next model
-- Three-model fallback chain - Gemini 2.0 Flash Lite → Llama 3.2 11B → Qwen 2.5 VL 7B
+- Three-model fallback chain - Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
 
 **Output example:**
 
@@ -73,7 +73,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 | Backend | GitHub Actions + Python 3.11 |
 | Image download | instaloader 4.15.1 |
 | Image resize | Pillow 10.4.0 (768px max before API call) |
-| AI extraction | OpenRouter - Gemini 2.0 Flash Lite (primary) → Llama 3.2 11B → Qwen 2.5 VL 7B (fallbacks) |
+| AI extraction | OpenRouter - Gemini 2.5 Flash Lite (primary) → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL (fallbacks) |
 | AI metadata | OpenRouter - title + tags from extracted text |
 | Note storage | Separate private GitHub repo |
 
@@ -150,13 +150,13 @@ Designed for personal use - realistically 20–30 posts/day.
 | Run duration | ~2–3 min/post | Includes Python setup and pip install each time |
 
 ### OpenRouter (AI models)
-| Limit | Value | Notes |
+| Model | Role | Notes |
 |---|---|---|
-| Gemini 2.0 Flash Lite | ~10–15 req/min | Primary model - most likely to 429 |
-| Llama 3.2 11B | ~20 req/min | First fallback |
-| Qwen 2.5 VL 7B | ~20 req/min | Second fallback |
+| Gemini 2.5 Flash Lite | Primary | Fastest, lowest cost |
+| Qwen 3.5 9B | Fallback 1 | Multimodal vision, low cost |
+| NVIDIA Nemotron Nano 12B 2 VL | Fallback 2 | Explicitly handles multi-image documents |
 
-At 20–30 posts/day spread across the day, rate limits are rarely hit. Back-to-back rapid submissions are the only scenario that triggers 429s - the retry+fallback chain handles these automatically.
+At 20–30 posts/day spread across the day, rate limits are rarely hit. If all three models fail, the chain automatically retries — waiting 1 min then 3 min — before giving up.
 
 ### Instagram / instaloader
 | Limit | Value | Notes |

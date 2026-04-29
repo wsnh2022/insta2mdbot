@@ -13,9 +13,11 @@ from PIL import Image
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 INSTAGRAM_URL = os.environ["INSTAGRAM_URL"]
 NOTES_DIR = Path("notes")
-PRIMARY_MODEL = "google/gemini-2.0-flash-lite-001"
-FALLBACK_MODEL = "meta-llama/llama-3.2-11b-vision-instruct"
-FALLBACK_MODEL_2 = "qwen/qwen2.5-vl-7b-instruct:free"
+PRIMARY_MODEL = "google/gemini-2.5-flash-lite"
+FALLBACK_MODEL = "qwen/qwen3.5-9b"
+FALLBACK_MODEL_2 = "nvidia/nemotron-nano-12b-v1"
+MODELS = [PRIMARY_MODEL, FALLBACK_MODEL, FALLBACK_MODEL_2]
+CHAIN_RETRY_DELAYS = [60, 180]
 
 EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 
@@ -218,18 +220,24 @@ def main():
 
     print(f"[2/5] Extracting text via {PRIMARY_MODEL}...")
     extracted = None
-    for model in [PRIMARY_MODEL, FALLBACK_MODEL, FALLBACK_MODEL_2]:
-        try:
-            extracted = call_openrouter(images, model)
-            print(f"      {model} succeeded.")
+    for attempt, delay in enumerate([None] + CHAIN_RETRY_DELAYS):
+        if delay is not None:
+            print(f"      All models failed. Retrying full chain in {delay}s... (attempt {attempt}/{len(CHAIN_RETRY_DELAYS)})")
+            time.sleep(delay)
+        for model in MODELS:
+            try:
+                extracted = call_openrouter(images, model)
+                print(f"      {model} succeeded.")
+                break
+            except Exception as err:
+                print(f"      {model} failed: {err}")
+                if model != MODELS[-1]:
+                    print(f"      Trying next model...")
+        if extracted is not None:
             break
-        except Exception as err:
-            print(f"      {model} failed: {err}")
-            if model != FALLBACK_MODEL_2:
-                print(f"      Trying next model...")
 
     if extracted is None:
-        print("[ERROR] All models failed. Exiting.")
+        print("[ERROR] All models failed after all retries. Exiting.")
         sys.exit(1)
 
     extracted = re.sub(r'\[image-only slide\]\s*\n?', '', extracted).strip()
