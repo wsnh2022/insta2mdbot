@@ -8,18 +8,31 @@ const passphraseInput = document.getElementById("passphrase");
 const passphraseGroup = document.getElementById("passphrase-group");
 const passphraseSaved = document.getElementById("passphrase-saved");
 
-// On load — restore saved passphrase from sessionStorage
+// On load — if passphrase already saved, skip the field entirely
 if (sessionStorage.getItem("passphrase")) {
   showPassphraseSaved();
 }
 
-// Collapse field on blur if a value was typed
-passphraseInput.addEventListener("blur", () => {
-  if (passphraseInput.value.trim()) {
-    sessionStorage.setItem("passphrase", passphraseInput.value.trim());
-    showPassphraseSaved();
+// Enter key in passphrase field → save, collapse, move to URLs
+passphraseInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    collapsePassphrase();
   }
 });
+
+// Blur as fallback
+passphraseInput.addEventListener("blur", () => {
+  collapsePassphrase();
+});
+
+function collapsePassphrase() {
+  const val = passphraseInput.value.trim();
+  if (!val) return;
+  sessionStorage.setItem("passphrase", val);
+  showPassphraseSaved();
+  document.getElementById("urls").focus();
+}
 
 document.getElementById("change-passphrase").addEventListener("click", () => {
   sessionStorage.removeItem("passphrase");
