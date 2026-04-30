@@ -22,10 +22,6 @@
               autocomplete="current-password"
             />
           </div>
-          <div class="passphrase-saved hidden" id="passphrase-saved">
-            <span>🔒 Passphrase saved</span>
-            <button type="button" id="change-passphrase">Change</button>
-          </div>
 
           <div class="form-group">
             <label for="urls">Instagram Post URLs</label>
@@ -39,7 +35,10 @@
             <p class="hint">One URL per line · max 10</p>
           </div>
 
-          <button type="submit" id="submit-btn">Convert</button>
+          <div class="btn-row">
+            <button type="button" id="passphrase-lock" class="hidden" title="Update passphrase">🔒</button>
+            <button type="submit" id="submit-btn">Convert</button>
+          </div>
         </form>
 
         <div id="status" class="status hidden"></div>

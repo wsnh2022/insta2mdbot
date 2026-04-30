@@ -86,33 +86,29 @@ textarea#urls {
   color: #484f58;
 }
 
-/* Passphrase saved indicator */
-.passphrase-saved {
+/* Button row: lock + convert side by side */
+.btn-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.55rem 0.85rem;
-  background: #0d2a1a;
-  border: 1px solid #238636;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #3fb950;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
 }
-.passphrase-saved button {
-  width: auto;
-  min-height: unset;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: transparent;
-  border: 1px solid #3fb950;
-  border-radius: 4px;
-  color: #3fb950;
+
+#passphrase-lock {
+  width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   margin-top: 0;
 }
-.passphrase-saved button:hover { background: rgba(63, 185, 80, 0.1); }
+#passphrase-lock:hover { background: #30363d; border-color: #58a6ff; }
+
+#submit-btn { flex: 1; margin-top: 0; }
 
 /* Button */
 button {

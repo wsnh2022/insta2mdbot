@@ -6,14 +6,14 @@ const btn = document.getElementById("submit-btn");
 const status = document.getElementById("status");
 const passphraseInput = document.getElementById("passphrase");
 const passphraseGroup = document.getElementById("passphrase-group");
-const passphraseSaved = document.getElementById("passphrase-saved");
+const passphraseLock = document.getElementById("passphrase-lock");
 
-// On load — if passphrase already saved, skip the field entirely
+// On load — if passphrase already saved, hide the field
 if (sessionStorage.getItem("passphrase")) {
   showPassphraseSaved();
 }
 
-// Enter key in passphrase field → save, collapse, move to URLs
+// Enter key → save and collapse
 passphraseInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -21,10 +21,22 @@ passphraseInput.addEventListener("keydown", (e) => {
   }
 });
 
-// Blur as fallback
+// Tab / click away → collapse
 passphraseInput.addEventListener("blur", () => {
   collapsePassphrase();
 });
+
+// Lock button → show passphrase field again
+passphraseLock.addEventListener("click", () => {
+  passphraseLock.classList.add("hidden");
+  passphraseGroup.classList.remove("hidden");
+  passphraseInput.focus();
+});
+
+function showPassphraseSaved() {
+  passphraseGroup.classList.add("hidden");
+  passphraseLock.classList.remove("hidden");
+}
 
 function collapsePassphrase() {
   const val = passphraseInput.value.trim();
@@ -32,19 +44,6 @@ function collapsePassphrase() {
   sessionStorage.setItem("passphrase", val);
   showPassphraseSaved();
   document.getElementById("urls").focus();
-}
-
-document.getElementById("change-passphrase").addEventListener("click", () => {
-  sessionStorage.removeItem("passphrase");
-  passphraseInput.value = "";
-  passphraseSaved.classList.add("hidden");
-  passphraseGroup.classList.remove("hidden");
-  passphraseInput.focus();
-});
-
-function showPassphraseSaved() {
-  passphraseGroup.classList.add("hidden");
-  passphraseSaved.classList.remove("hidden");
 }
 
 function getPassphrase() {
