@@ -1,8 +1,7 @@
 ![cover](docs/cover.png)
 # INSTA_TO_MD_BOT
 
-Paste any Instagram post URL and get a fully-formatted Markdown note - AI-extracted slide text, generated title and tags, a 2-sentence summary, YAML frontmatter, and auto-filed into your private Obsidian vault by topic - all in under 2 minutes, with no manual steps.
-
+Paste an Instagram URL and get a fully-structured Obsidian note - AI-extracted text, title, tags, summary, and auto-filed by topic - pushed to your private repo in ~2 minutes.
 
 **Live app:** https://wsnh2022.github.io/insta2mdbot/
 ![frontend_snap](docs/frontend_snap.png)
