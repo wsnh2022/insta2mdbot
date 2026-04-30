@@ -32,7 +32,7 @@ Each pair is chosen to touch the same layer of the stack so changes stay cohesiv
 ## Day 4 — Power User
 *Frontend + Worker changes. Session login should be stable before this.*
 
-- [ ] **Batch URL Submission** — Textarea replaces single URL input. Submit up to 10 URLs at once; frontend dispatches them sequentially with 6s delays to stay under the rate limit.
+- [x] **Batch URL Submission** — Textarea replaces single URL input. Submit up to 10 URLs at once; frontend dispatches them sequentially with 30s delays between each to stagger GitHub Actions runs.
 
 ---
 
@@ -46,4 +46,4 @@ Each pair is chosen to touch the same layer of the stack so changes stay cohesiv
 | Auto-Folder | `scripts/process.py` | Pending |
 | Session Login | `scripts/process.py`, `process_post.yml` | Pending |
 | Status Polling | `worker/index.js`, `docs/app.js` | Pending |
-| Batch Submission | `docs/index.html`, `docs/app.js` | Pending |
+| Batch Submission | `docs/index.html`, `docs/app.js` | Done |

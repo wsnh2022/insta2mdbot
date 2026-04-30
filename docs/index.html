@@ -8,8 +8,9 @@
 </head>
 <body>
   <main>
+    <img src="frontend_cover.png" class="cover" alt="Carousel to Markdown">
     <h1>instatomdnotes</h1>
-    <p class="tagline">Instagram carousel → clean Markdown note</p>
+    <p class="tagline">Instagram carousels → clean Markdown notes</p>
 
     <form id="submit-form">
       <label for="passphrase">Passphrase</label>
@@ -22,21 +23,15 @@
         autocomplete="current-password"
       />
 
-      <label for="url">Instagram Post URL</label>
-      <input
-        type="url"
-        id="url"
-        name="url"
-        placeholder="https://www.instagram.com/p/..."
-        required
+      <label for="urls">Instagram Post URLs</label>
+      <textarea
+        id="urls"
+        name="urls"
+        placeholder="https://www.instagram.com/p/...&#10;https://www.instagram.com/p/...&#10;https://www.instagram.com/p/..."
+        rows="5"
         autocomplete="off"
-      />
-
-      <div class="options">
-        <label><input type="checkbox" name="extract_text" checked> Extract text</label>
-        <label><input type="checkbox" name="remove_clutter" checked> Remove promotional clutter</label>
-        <label><input type="checkbox" name="add_tags" checked> Add tags</label>
-      </div>
+      ></textarea>
+      <p class="hint">One URL per line · max 10</p>
 
       <button type="submit" id="submit-btn">Convert</button>
     </form>
