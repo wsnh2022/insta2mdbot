@@ -6,9 +6,9 @@ body {
   color: #e6edf3;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 2rem 1.25rem;
 }
 
 main {
@@ -59,8 +59,9 @@ textarea#urls {
   border: 1px solid #30363d;
   border-radius: 6px;
   color: #e6edf3;
-  font-size: 0.9rem;
+  font-size: 1rem; /* must be 16px+ — iOS Safari zooms in on focus if lower */
   font-family: inherit;
+  -webkit-appearance: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -76,6 +77,9 @@ textarea#urls {
   min-height: 130px;
   line-height: 1.65;
 }
+@media (max-width: 480px) {
+  textarea#urls { resize: none; } /* resize handle is awkward on touch */
+}
 
 .hint {
   font-size: 0.72rem;
@@ -85,6 +89,7 @@ textarea#urls {
 /* Button */
 button {
   width: 100%;
+  min-height: 44px; /* minimum touch target — Apple HIG + Android MD */
   padding: 0.75rem;
   background: #238636;
   border: none;
