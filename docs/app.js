@@ -4,10 +4,43 @@ const BATCH_DELAY_MS = 30000;
 const form = document.getElementById("submit-form");
 const btn = document.getElementById("submit-btn");
 const status = document.getElementById("status");
+const passphraseInput = document.getElementById("passphrase");
+const passphraseGroup = document.getElementById("passphrase-group");
+const passphraseSaved = document.getElementById("passphrase-saved");
+
+// On load — restore saved passphrase from sessionStorage
+if (sessionStorage.getItem("passphrase")) {
+  showPassphraseSaved();
+}
+
+// Collapse field on blur if a value was typed
+passphraseInput.addEventListener("blur", () => {
+  if (passphraseInput.value.trim()) {
+    sessionStorage.setItem("passphrase", passphraseInput.value.trim());
+    showPassphraseSaved();
+  }
+});
+
+document.getElementById("change-passphrase").addEventListener("click", () => {
+  sessionStorage.removeItem("passphrase");
+  passphraseInput.value = "";
+  passphraseSaved.classList.add("hidden");
+  passphraseGroup.classList.remove("hidden");
+  passphraseInput.focus();
+});
+
+function showPassphraseSaved() {
+  passphraseGroup.classList.add("hidden");
+  passphraseSaved.classList.remove("hidden");
+}
+
+function getPassphrase() {
+  return passphraseInput.value.trim() || sessionStorage.getItem("passphrase") || "";
+}
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const passphrase = document.getElementById("passphrase").value;
+  const passphrase = getPassphrase();
   const raw = document.getElementById("urls").value;
 
   if (!passphrase) {
