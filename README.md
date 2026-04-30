@@ -26,6 +26,7 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Three-model fallback chain — Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
 - If all three models fail, automatically retries the full chain after 1 min then 3 min before giving up
 - Optional Instagram session login — reduces anonymous IP blocks on the GitHub Actions runner
+- AHK hotkey (`Alt+I`) — select any Instagram URL on screen, press the hotkey, it triggers the conversion instantly with no browser needed
 
 **Output example:**
 
@@ -129,6 +130,9 @@ insta2mdbot/
 │   └── process.py               # Download → resize → extract → metadata → build note
 ├── .github/workflows/
 │   └── process_post.yml         # Checks out notes repo, runs process.py, pushes note
+├── ahk/
+│   ├── insta_trigger.ahk        # AHK v2 hotkey (Alt+I) - select URL → trigger Worker directly
+│   └── passphrase.txt           # Your passphrase - gitignored, create manually
 ├── redeploy.bat                 # One-click Worker redeployment (reads .cloudflare-token)
 ├── requirements.txt             # instaloader, requests, Pillow
 ├── roadmap.md                   # Feature roadmap — tracks implemented and pending features

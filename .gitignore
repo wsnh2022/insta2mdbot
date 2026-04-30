@@ -5,5 +5,5 @@ __pycache__/
 .wrangler/
 node_modules/
 .cloudflare-token
-!LOG_FILE!
 .claude/
+ahk/passphrase.txt

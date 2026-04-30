@@ -197,6 +197,35 @@ git push
 
 ---
 
+### 8. AHK Hotkey (Optional)
+
+An AutoHotkey v2 script lets you trigger a conversion without opening the browser — select an Instagram URL anywhere on screen and press `Alt+I`.
+
+**Prerequisites:** [AutoHotkey v2](https://www.autohotkey.com/) installed (download and run the installer, default options).
+
+**Setup:**
+
+1. Open `ahk/passphrase.txt` and replace its contents with the same passphrase you set as `ACCESS_KEY` in the Cloudflare Worker (`npx wrangler secret put ACCESS_KEY`).
+2. Double-click `ahk/insta_trigger.ahk` to run the script. An AHK icon appears in the system tray.
+
+**Usage:**
+
+1. In any app (browser, notes, anywhere) — select/highlight an Instagram post URL
+2. Press `Alt+I`
+3. A Windows notification appears within a second:
+   - "Triggered — GitHub Actions is processing the post" → success
+   - "Wrong passphrase — update passphrase.txt" → passphrase mismatch
+   - "Rate limited — wait a minute and try again" → 10 req/min limit hit
+4. GitHub Actions runs in the background — the note appears in the private notes repo in ~2 min
+
+**How it works:** the script sends `Ctrl+C` to copy the selected text, extracts the shortcode via regex, and POSTs `{"instagram_url": "..."}` directly to the Cloudflare Worker with `X-Access-Key` set — identical to a form submission, no browser involved.
+
+> **Note:** `ahk/passphrase.txt` is listed in `.gitignore` and will never be committed. The script file itself is safe to commit — it contains no secrets.
+
+> **Tip:** Press `Ctrl+S` while editing the `.ahk` file to reload it instantly (built into the script header).
+
+---
+
 ## Common Errors and Fixes
 
 ### `ERROR: No matching distribution found for instaloader==1.9.7`
@@ -282,6 +311,62 @@ This usually means a CORS preflight failure, not an actual network issue. Check 
 
 ### Notes are visible publicly on GitHub
 Free GitHub Pages requires a public repo, so the code is public. To keep notes private, push them to a **separate private repo** using a PAT. The workflow checks out the private repo to the `notes/` path before running the processor - no changes needed in the Python script.
+
+---
+
+## Security Hardening
+
+The following security improvements have been applied. Run `redeploy.bat` after any Worker change.
+
+### CORS locked to GitHub Pages only
+
+`worker/index.js` — `Access-Control-Allow-Origin` was changed from `*` (any site) to `https://wsnh2022.github.io` only. No other website's JavaScript can call the Worker, even if they know the URL and passphrase.
+
+Direct API calls (AHK, curl, Postman) are unaffected — CORS is a browser-only restriction.
+
+---
+
+### IP lockout after failed passphrase attempts
+
+`worker/index.js` — After 5 wrong passphrase attempts from the same IP, that IP is blocked for **45 minutes** on both GET and POST endpoints. Applies to brute-force attempts against the form and the AHK hotkey.
+
+---
+
+### Rate limiting extended to GET endpoint
+
+`worker/index.js` — The status-polling GET endpoint was previously unprotected. It now shares the same IP lockout as POST, preventing rapid passphrase probing via the status endpoint.
+
+---
+
+### Passphrase strength
+
+`ACCESS_KEY` (Cloudflare Worker secret) should be at minimum 12 characters with uppercase, lowercase, numbers, and symbols. This gives ~72 bits of entropy — combined with the IP lockout, brute force is not a practical attack.
+
+To update: `npx wrangler secret put ACCESS_KEY` (with `$env:CLOUDFLARE_API_TOKEN` set).
+
+---
+
+### GitHub PATs — use classic tokens only
+
+Generate one classic token and use it for both `GITHUB_PAT` and `NOTES_REPO_PAT`.
+
+**Scopes required:**
+- `repo` — full access (required for private repo checkout in Actions)
+- `workflow` — required to trigger `workflow_dispatch`
+
+Generate at: **GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)**
+
+**Where to paste it:**
+- `GITHUB_PAT` → Cloudflare dashboard → Workers & Pages → `instatomdnotes-worker` → Settings → Variables and Secrets → Rotate
+- `NOTES_REPO_PAT` → github.com/wsnh2022/insta2mdbot → Settings → Secrets and variables → Actions → Update
+
+> **Do not use fine-grained tokens.** `actions/checkout@v4` with a private repo + fine-grained token returns a 403 error regardless of permission configuration. Classic tokens are the only working approach for this stack.
+
+---
+
+### AHK passphrase file
+
+`ahk/passphrase.txt` is listed in `.gitignore` and is never committed. It is read at hotkey-press time from the local filesystem. The AHK script itself contains no secrets and is safe to commit.
 
 ---
 
