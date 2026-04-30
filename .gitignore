@@ -7,3 +7,6 @@ node_modules/
 .cloudflare-token
 .claude/
 ahk/passphrase.txt
+gitsync.bat 
+deploy-log.txt 
+.gitsync.lock 
