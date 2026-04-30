@@ -1,4 +1,5 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #0d1117;
@@ -7,28 +8,81 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1.5rem;
 }
-main { width: 100%; max-width: 480px; padding: 2rem; }
-.cover { width: 100%; border-radius: 8px; margin-bottom: 1.5rem; display: block; }
-h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-.tagline { color: #8b949e; font-size: 0.875rem; margin-bottom: 2rem; }
-label[for="urls"] { display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: #8b949e; }
+
+main {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* Cover image */
+.cover {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 1.75rem;
+}
+
+/* Header */
+h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+.tagline {
+  color: #8b949e;
+  font-size: 0.85rem;
+  margin-bottom: 2rem;
+}
+
+/* Form */
+form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b949e;
+}
+
+/* Shared input + textarea styles */
+input[type="password"],
 textarea#urls {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 0.9rem;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 6px;
   color: #e6edf3;
   font-size: 0.9rem;
   font-family: inherit;
-  resize: vertical;
-  min-height: 120px;
-  margin-bottom: 0.5rem;
-  line-height: 1.6;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-textarea#urls:focus { outline: none; border-color: #58a6ff; }
-.hint { font-size: 0.75rem; color: #484f58; margin-bottom: 1.25rem; }
+
+input[type="password"]:focus,
+textarea#urls:focus {
+  outline: none;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+}
+
+textarea#urls {
+  resize: vertical;
+  min-height: 130px;
+  line-height: 1.65;
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: #484f58;
+}
+
+/* Button */
 button {
   width: 100%;
   padding: 0.75rem;
@@ -36,11 +90,23 @@ button {
   border: none;
   border-radius: 6px;
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.25rem;
 }
-button:disabled { background: #30363d; cursor: not-allowed; }
-.status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; font-size: 0.875rem; }
+button:hover:not(:disabled) { background: #2ea043; }
+button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+/* Status */
+.status {
+  margin-top: 1.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
 .status.success { background: #0d2a1a; border: 1px solid #238636; color: #3fb950; }
-.status.error { background: #2a0d0d; border: 1px solid #f85149; color: #f85149; }
+.status.error   { background: #2a0d0d; border: 1px solid #f85149; color: #f85149; }
 .hidden { display: none; }
