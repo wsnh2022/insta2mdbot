@@ -54,14 +54,54 @@ Enable GitHub Pages: repo **Settings → Pages → Source: Deploy from a branch 
 
 Go to: `https://github.com/YOUR_USERNAME/insta2mdbot/settings/secrets/actions`
 
-Add these two secrets:
+Add these secrets:
 
-| Name | Value |
-|------|-------|
-| `OPENROUTER_API_KEY` | Your OpenRouter API key |
-| `NOTES_REPO_PAT` | Your GitHub PAT (`ghp_...`) |
+| Name | Value | Required |
+|------|-------|----------|
+| `OPENROUTER_API_KEY` | Your OpenRouter API key | Yes |
+| `NOTES_REPO_PAT` | Your GitHub PAT (`ghp_...`) | Yes |
+| `INSTAGRAM_SESSION_ID` | Your Instagram `sessionid` cookie value | Optional (but recommended) |
 
-> **Gotcha:** Both secrets must be added to the **main code repo** (`insta2mdbot`), NOT to the private notes repo. The workflow runs in the code repo and reads secrets from there. Adding secrets to the notes repo has no effect.
+> **Gotcha:** All secrets must be added to the **main code repo** (`insta2mdbot`), NOT to the private notes repo. The workflow runs in the code repo and reads secrets from there. Adding secrets to the notes repo has no effect.
+
+---
+
+### How to get your Instagram Session ID (for `INSTAGRAM_SESSION_ID`)
+
+Adding this secret makes instaloader download as your logged-in account instead of anonymously. This significantly reduces Instagram IP blocks and rate limiting on the GitHub Actions runner.
+
+**Step 1 — Open Instagram in a desktop browser and log in**
+
+Use Chrome, Edge, or Firefox. You must be on desktop — mobile browsers don't expose DevTools easily.
+
+**Step 2 — Open DevTools**
+
+Press `F12` (or right-click anywhere → **Inspect**).
+
+**Step 3 — Navigate to the cookie**
+
+- Click the **Application** tab (Chrome/Edge) or **Storage** tab (Firefox)
+- In the left sidebar expand **Cookies** → click `https://www.instagram.com`
+- Find the row where **Name** is exactly `sessionid`
+- Click it and copy the full **Value** (it's a long alphanumeric string like `58901234567%3AaBcDeFgHiJkLmN%3A12%3A...`)
+
+**Step 4 — Add it as a GitHub secret**
+
+1. Go to your repo → **Settings → Secrets and variables → Actions**
+2. Click **New repository secret**
+3. Name: `INSTAGRAM_SESSION_ID`
+4. Value: paste the cookie value
+5. Click **Add secret**
+
+That's it — every future GitHub Actions run automatically picks it up.
+
+> **Gotcha: Don't log out of Instagram after copying the cookie.** Logging out invalidates the session immediately. The cookie stays valid as long as you remain logged in on that browser.
+
+> **Gotcha: Sessions expire after a few months.** If the bot starts hitting more download errors than usual, your session has likely expired. Repeat Steps 1–4 above to get a fresh cookie and update the secret.
+
+> **Gotcha: Changing your Instagram password invalidates all sessions.** After a password change you must get a new cookie.
+
+> **Note: This is completely optional.** If `INSTAGRAM_SESSION_ID` is not set, the bot falls back to anonymous downloads exactly as before — no errors, just slightly higher risk of IP blocks on heavy use.
 
 ---
 
@@ -261,13 +301,17 @@ Free GitHub Pages requires a public repo, so the code is public. To keep notes p
     │  Checks out private notes repo → notes/
     │  pip install instaloader, requests, Pillow
     │  process.py:
-    │    1. Download carousel slides via instaloader
-    │    2. Resize each slide to max 768px (Pillow)
-    │    3. Send all slides to OpenRouter vision model
+    │    1. Check _processed.txt — skip if shortcode already saved
+    │    2. Download carousel slides via instaloader
+    │       (uses sessionid cookie if INSTAGRAM_SESSION_ID secret is set)
+    │    3. Resize each slide to max 768px (Pillow)
+    │    4. Send all slides to OpenRouter vision model
     │       (chain: Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL)
     │       (if all fail: retry full chain after 1 min, then 3 min)
-    │    4. Second API call → get title + tags (JSON)
-    │    5. Build .md note
+    │    5. Second API call → get title + tags (JSON)
+    │    6. Third API call → generate 2-3 sentence summary
+    │    7. Build .md note with YAML frontmatter + summary callout
+    │       saved to notes/{primary-tag}/{slug}.md
     │  git commit + push → private notes repo
     ▼
 [github.com/YOUR_USERNAME/insta2mdbot-notes] (private)
