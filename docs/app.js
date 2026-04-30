@@ -26,16 +26,17 @@ passphraseInput.addEventListener("blur", () => {
   collapsePassphrase();
 });
 
-// Lock button → show passphrase field again
+// Lock button → reveal passphrase field to update it
 passphraseLock.addEventListener("click", () => {
-  passphraseLock.classList.add("hidden");
+  if (!passphraseGroup.classList.contains("hidden")) return;
+  passphraseLock.classList.remove("active");
   passphraseGroup.classList.remove("hidden");
   passphraseInput.focus();
 });
 
 function showPassphraseSaved() {
   passphraseGroup.classList.add("hidden");
-  passphraseLock.classList.remove("hidden");
+  passphraseLock.classList.add("active");
 }
 
 function collapsePassphrase() {

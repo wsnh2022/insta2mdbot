@@ -95,6 +95,7 @@ textarea#urls {
 
 #passphrase-lock {
   width: 44px;
+  min-width: 44px;
   min-height: 44px;
   flex-shrink: 0;
   padding: 0;
@@ -103,10 +104,18 @@ textarea#urls {
   border-radius: 6px;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  opacity: 0.35;
+  transition: opacity 0.2s, background 0.15s, border-color 0.15s;
   margin-top: 0;
 }
-#passphrase-lock:hover { background: #30363d; border-color: #58a6ff; }
+#passphrase-lock.active {
+  opacity: 1;
+}
+#passphrase-lock:hover {
+  background: #30363d;
+  border-color: #58a6ff;
+  opacity: 1;
+}
 
 #submit-btn { flex: 1; margin-top: 0; }
 
