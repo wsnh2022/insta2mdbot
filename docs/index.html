@@ -8,39 +8,43 @@
 </head>
 <body>
   <main>
-    <img src="frontend_cover.png" class="cover" alt="Carousel to Markdown">
-    <h1>instatomdnotes</h1>
-    <p class="tagline">Instagram carousels → clean Markdown notes</p>
+    <div class="card">
+      <img src="frontend_cover.png" class="cover" alt="Carousel to Markdown">
+      <div class="card-body">
+        <h1>instatomdnotes</h1>
+        <p class="tagline">Instagram carousels → clean Markdown notes</p>
 
-    <form id="submit-form">
-      <div class="form-group">
-        <label for="passphrase">Passphrase</label>
-        <input
-          type="password"
-          id="passphrase"
-          name="passphrase"
-          placeholder="Access passphrase"
-          required
-          autocomplete="current-password"
-        />
+        <form id="submit-form">
+          <div class="form-group">
+            <label for="passphrase">Passphrase</label>
+            <input
+              type="password"
+              id="passphrase"
+              name="passphrase"
+              placeholder="Access passphrase"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="urls">Instagram Post URLs</label>
+            <textarea
+              id="urls"
+              name="urls"
+              placeholder="https://www.instagram.com/p/...&#10;https://www.instagram.com/p/...&#10;https://www.instagram.com/p/..."
+              rows="4"
+              autocomplete="off"
+            ></textarea>
+            <p class="hint">One URL per line · max 10</p>
+          </div>
+
+          <button type="submit" id="submit-btn">Convert</button>
+        </form>
+
+        <div id="status" class="status hidden"></div>
       </div>
-
-      <div class="form-group">
-        <label for="urls">Instagram Post URLs</label>
-        <textarea
-          id="urls"
-          name="urls"
-          placeholder="https://www.instagram.com/p/...&#10;https://www.instagram.com/p/...&#10;https://www.instagram.com/p/..."
-          rows="5"
-          autocomplete="off"
-        ></textarea>
-        <p class="hint">One URL per line · max 10</p>
-      </div>
-
-      <button type="submit" id="submit-btn">Convert</button>
-    </form>
-
-    <div id="status" class="status hidden"></div>
+    </div>
   </main>
   <script src="app.js"></script>
 </body>
