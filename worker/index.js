@@ -111,13 +111,30 @@ export default {
       return jsonResponse({ error: "Invalid JSON body" }, 400, corsOrigin);
     }
 
-    const { instagram_url } = body;
+    const { instagram_url, mode, content } = body;
 
-    const shortcodeMatch = instagram_url && instagram_url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
-    if (!shortcodeMatch) {
-      return jsonResponse({ error: "Invalid Instagram URL" }, 400, corsOrigin);
+    let workflowInputs;
+
+    if (instagram_url) {
+      const shortcodeMatch = instagram_url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
+      if (!shortcodeMatch) {
+        return jsonResponse({ error: "Invalid Instagram URL" }, 400, corsOrigin);
+      }
+      const cleanUrl = `https://www.instagram.com/p/${shortcodeMatch[1]}/`;
+      workflowInputs = { mode: "instagram", instagram_url: cleanUrl };
+
+    } else if (mode === "urls" || mode === "text") {
+      if (typeof content !== "string" || content.trim().length === 0) {
+        return jsonResponse({ error: "content is required and must be a non-empty string" }, 400, corsOrigin);
+      }
+      if (content.length > 10000) {
+        return jsonResponse({ error: "content exceeds 10,000 character limit" }, 400, corsOrigin);
+      }
+      workflowInputs = { mode, content };
+
+    } else {
+      return jsonResponse({ error: "Request must include instagram_url, or mode + content" }, 400, corsOrigin);
     }
-    const cleanUrl = `https://www.instagram.com/p/${shortcodeMatch[1]}/`;
 
     const githubApiUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`;
 
@@ -131,7 +148,7 @@ export default {
       },
       body: JSON.stringify({
         ref: env.GITHUB_REF,
-        inputs: { instagram_url: cleanUrl },
+        inputs: workflowInputs,
       }),
     });
 

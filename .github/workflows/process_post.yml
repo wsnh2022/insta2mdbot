@@ -3,9 +3,18 @@ name: Process Instagram Post
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'Processing mode: instagram | urls | text'
+        required: false
+        type: string
+        default: 'instagram'
       instagram_url:
-        description: 'Instagram post URL'
-        required: true
+        description: 'Instagram post URL (mode=instagram only)'
+        required: false
+        type: string
+      content:
+        description: 'Raw content: URLs or text body (mode=urls or mode=text)'
+        required: false
         type: string
 
 jobs:
@@ -38,6 +47,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           INSTAGRAM_URL: ${{ inputs.instagram_url }}
           INSTAGRAM_SESSION_ID: ${{ secrets.INSTAGRAM_SESSION_ID }}
+          MODE: ${{ inputs.mode }}
+          CONTENT: ${{ inputs.content }}
         run: python scripts/process.py
 
       - name: Commit and push notes
@@ -47,5 +58,5 @@ jobs:
           git config user.email "bot@instatomdnotes"
           git add .
           git diff --cached --quiet && echo "No new notes to commit" && exit 0
-          git commit -m "note: ${{ inputs.instagram_url }}"
+          git commit -m "note(${{ inputs.mode }}): $(date -u +%Y-%m-%d)"
           git push
