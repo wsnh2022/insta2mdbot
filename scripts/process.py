@@ -11,7 +11,9 @@ from datetime import datetime
 from PIL import Image
 
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
-INSTAGRAM_URL = os.environ["INSTAGRAM_URL"]
+INSTAGRAM_URL = os.environ.get("INSTAGRAM_URL", "")
+MODE = os.environ.get("MODE", "instagram").strip().lower()
+CONTENT = os.environ.get("CONTENT", "")
 NOTES_DIR = Path("notes")
 PRIMARY_MODEL = "google/gemini-2.5-flash-lite"
 FALLBACK_MODEL = "qwen/qwen3.5-9b"
@@ -209,18 +211,20 @@ def title_to_filename(title: str) -> str:
     slug = title.lower().strip()
     slug = re.sub(r'[^a-z0-9\s-]', '', slug)
     slug = re.sub(r'\s+', '-', slug)
-    return re.sub(r'-+', '-', slug).strip('-')
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug if slug else "untitled"
 
 
 def build_markdown(url: str, extracted: str, title: str, tags: list, summary: str = "") -> str:
     date_str = datetime.now().strftime("%Y-%m-%d")
     tag_lines = "\n".join(f"  - {t}" for t in tags)
-    frontmatter = f'---\ntitle: "{title}"\nsource: "{url}"\ntags:\n{tag_lines}\ndate: {date_str}\n---'
+    source_line = f'\nsource: "{url}"' if url else ""
+    frontmatter = f'---\ntitle: "{title}"{source_line}\ntags:\n{tag_lines}\ndate: {date_str}\n---'
     summary_block = f"\n> [!summary]\n> {summary}\n" if summary else ""
     return f"{frontmatter}{summary_block}\n{extracted.strip()}\n"
 
 
-def main():
+def process_instagram():
     tmp_dir = Path("/tmp/insta_download")
     shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
     processed_log = NOTES_DIR / "_processed.txt"
@@ -295,6 +299,141 @@ def main():
     with open(processed_log, "a", encoding="utf-8") as f:
         f.write(shortcode + "\n")
     print(f"[5/5] Saved: {note_path}")
+
+
+TEXT_METADATA_PROMPT = """Given this text content, return a JSON object with exactly two keys:
+- "title": a concise 5-8 word title describing the core topic (title case, no hashtags)
+- "tags": an array of 3-5 relevant lowercase topic tags without the # symbol
+
+Return only valid JSON. No explanation, no markdown code block.
+
+Content:
+{content}"""
+
+TEXT_SUMMARY_PROMPT = """Summarise the following content in 2-3 plain sentences. \
+Capture the core idea and single most useful takeaway. No bullet points, no formatting — plain prose only.
+
+Content:
+{content}"""
+
+
+def extract_urls_from_text(text: str) -> list[str]:
+    found = re.findall(r'https?://[^\s\)"\'<>]+', text)
+    seen = set()
+    result = []
+    for u in found:
+        u = u.rstrip('.,;:!?')
+        if u not in seen:
+            seen.add(u)
+            result.append(u)
+    return result
+
+
+def process_urls():
+    lines = [l.strip() for l in CONTENT.splitlines() if l.strip()]
+    urls = [l for l in lines if re.match(r'^https?://', l)]
+    if not urls:
+        print("[SKIP] No valid URLs found in content.")
+        sys.exit(0)
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    pending_path = NOTES_DIR / "pending-to-read.md"
+    NOTES_DIR.mkdir(parents=True, exist_ok=True)
+    new_items = "\n".join(f"- [{date_str}] {u}" for u in urls)
+    if pending_path.exists():
+        existing = pending_path.read_text(encoding="utf-8")
+        if not existing.endswith("\n"):
+            existing += "\n"
+        pending_path.write_text(existing + new_items + "\n", encoding="utf-8")
+    else:
+        pending_path.write_text("# Pending to Read\n\n" + new_items + "\n", encoding="utf-8")
+    print(f"[DONE] Appended {len(urls)} URL(s) to {pending_path}")
+
+
+def process_text():
+    if not CONTENT.strip():
+        print("[ERROR] CONTENT is empty for mode=text.")
+        sys.exit(1)
+    print("[1/4] Extracting embedded URLs from content...")
+    embedded_urls = extract_urls_from_text(CONTENT)
+    print(f"      Found {len(embedded_urls)} embedded URL(s)")
+    print("[2/4] Getting title, tags and summary via AI...")
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/instatomdnotes",
+    }
+    title = "Untitled Note"
+    tags = ["notes"]
+    try:
+        body = {
+            "model": PRIMARY_MODEL,
+            "messages": [{"role": "user", "content": TEXT_METADATA_PROMPT.format(content=CONTENT[:3000])}],
+            "max_tokens": 200,
+        }
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers, json=body, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+        raw = data["choices"][0]["message"]["content"].strip()
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        metadata = json.loads(raw.strip())
+        title = metadata.get("title", "Untitled Note")
+        tags = metadata.get("tags", ["notes"])
+    except Exception as e:
+        print(f"      Metadata call failed: {e} — using defaults")
+    summary = ""
+    try:
+        body = {
+            "model": PRIMARY_MODEL,
+            "messages": [{"role": "user", "content": TEXT_SUMMARY_PROMPT.format(content=CONTENT[:3000])}],
+            "max_tokens": 150,
+        }
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers, json=body, timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+        summary = data["choices"][0]["message"]["content"].strip()
+        print("      Summary generated.")
+    except Exception as e:
+        print(f"      Summary call failed: {e} — skipping")
+    print("[3/4] Building markdown note...")
+    further_reading = ""
+    if embedded_urls:
+        links = "\n".join(f"- {u}" for u in embedded_urls)
+        further_reading = f"\n\n## Further Reading\n\n{links}\n"
+    note_body = CONTENT.strip() + further_reading
+    note_md = build_markdown("", note_body, title, tags, summary)
+    folder = title_to_filename(tags[0]) if tags else "misc"
+    note_path = NOTES_DIR / folder / f"{title_to_filename(title)}.md"
+    note_path.parent.mkdir(parents=True, exist_ok=True)
+    note_path.write_text(note_md, encoding="utf-8")
+    print(f"[4/4] Saved: {note_path}")
+
+
+def main():
+    if MODE == "urls":
+        print("[MODE] urls — appending to reading list")
+        process_urls()
+    elif MODE == "text":
+        print("[MODE] text — generating AI note from raw content")
+        process_text()
+    else:
+        if not INSTAGRAM_URL:
+            print("[ERROR] MODE=instagram but INSTAGRAM_URL is not set.")
+            sys.exit(1)
+        print(f"[MODE] instagram — processing carousel: {INSTAGRAM_URL}")
+        process_instagram()
 
 
 if __name__ == "__main__":

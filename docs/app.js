@@ -51,37 +51,52 @@ function getPassphrase() {
   return passphraseInput.value.trim() || sessionStorage.getItem("passphrase") || "";
 }
 
+function isUrl(s) {
+  return /^https?:\/\/\S+/.test(s);
+}
+
+function detectMode(raw) {
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return { mode: null, lines };
+  if (lines.some(l => l.includes("instagram.com/p/"))) return { mode: "instagram", lines };
+  if (lines.every(l => isUrl(l))) return { mode: "urls", lines };
+  return { mode: "text", lines };
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const passphrase = getPassphrase();
-  const raw = document.getElementById("urls").value;
+  const raw = document.getElementById("urls").value.trim();
 
-  if (!passphrase) {
-    showStatus("Passphrase is required.", "error");
-    return;
-  }
+  if (!passphrase) { showStatus("Passphrase is required.", "error"); return; }
+  if (!raw) { showStatus("Nothing to process — paste a URL or some text.", "error"); return; }
 
-  const urls = raw
-    .split("\n")
-    .map(u => u.trim())
-    .filter(u => u.includes("instagram.com/p/"));
-
-  if (urls.length === 0) {
-    showStatus("No valid Instagram post URLs found.", "error");
-    return;
-  }
-  if (urls.length > 10) {
-    showStatus("Max 10 URLs at once. Please remove some and try again.", "error");
-    return;
-  }
+  const { mode, lines } = detectMode(raw);
+  if (mode === null) { showStatus("Nothing to process — paste a URL or some text.", "error"); return; }
 
   btn.disabled = true;
   status.className = "status hidden";
 
-  if (urls.length === 1) {
-    await submitSingle(urls[0], passphrase);
+  if (mode === "instagram") {
+    const igUrls = lines.filter(l => l.includes("instagram.com/p/"));
+    if (igUrls.length > 10) {
+      showStatus("Max 10 Instagram URLs at once. Please remove some and try again.", "error");
+      btn.disabled = false; return;
+    }
+    if (igUrls.length === 1) { await submitSingle(igUrls[0], passphrase); }
+    else { await submitBatch(igUrls, passphrase); }
+  } else if (mode === "urls") {
+    if (lines.length > 10) {
+      showStatus("Max 10 URLs at once. Please remove some and try again.", "error");
+      btn.disabled = false; return;
+    }
+    await submitContent("urls", lines.join("\n"), passphrase);
   } else {
-    await submitBatch(urls, passphrase);
+    if (raw.length > 10000) {
+      showStatus("Text is too long. Max 10,000 characters.", "error");
+      btn.disabled = false; return;
+    }
+    await submitContent("text", raw, passphrase);
   }
 
   btn.disabled = false;
@@ -98,7 +113,7 @@ async function submitSingle(url, passphrase) {
     });
     const data = await resp.json();
     if (resp.ok && data.status === "triggered") {
-      showStatus("Processing... checking status in 20s.", "success");
+      showStatus("Processing carousel... checking status in 20s.", "success");
       document.getElementById("urls").value = "";
       pollStatus(passphrase);
     } else if (resp.status === 401) {
@@ -148,6 +163,35 @@ async function submitBatch(urls, passphrase) {
     showStatus(`${submitted} submitted, ${failed} failed. Notes ready in ~${estMin} min.`, "success");
   } else {
     showStatus("All submissions failed. Check your connection and try again.", "error");
+  }
+}
+
+async function submitContent(mode, content, passphrase) {
+  btn.textContent = mode === "urls" ? "Saving to reading list..." : "Generating note...";
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Access-Key": passphrase },
+      body: JSON.stringify({ mode, content }),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.status === "triggered") {
+      if (mode === "urls") {
+        showStatus("URLs saved to reading list. Note updated in ~30s.", "success");
+      } else {
+        showStatus("Processing text... note ready in ~1 min.", "success");
+        pollStatus(passphrase);
+      }
+      document.getElementById("urls").value = "";
+    } else if (resp.status === 401) {
+      showStatus("Wrong passphrase.", "error");
+    } else if (resp.status === 429) {
+      showStatus("Too many requests. Wait a minute and try again.", "error");
+    } else {
+      showStatus(data.error || "Something went wrong. Try again.", "error");
+    }
+  } catch {
+    showStatus("Network error. Check your connection.", "error");
   }
 }
 
