@@ -4,6 +4,7 @@
 Paste a URL or text into the form. The bot saves it as a neat `.md` note to your private repo.
 
 **Live app:** https://wsnh2022.github.io/insta2mdbot/
+
 ![frontend_snap](docs/frontend_snap.png)
 
 ---
