@@ -1,16 +1,26 @@
 ![cover](docs/cover.png)
 # INSTA_TO_MD_BOT
 
-Paste an Instagram URL and get a fully-structured Obsidian note - AI-extracted text, title, tags, summary, and auto-filed by topic - pushed to your private repo in ~2 minutes.
+Paste a URL or text into the form. The bot saves it as a neat `.md` note to your private repo.
 
 **Live app:** https://wsnh2022.github.io/insta2mdbot/
 ![frontend_snap](docs/frontend_snap.png)
 
 ---
 
-## What it does
+## What this does
 
-Paste any Instagram post URL → the app downloads every slide of the carousel, extracts all meaningful text using a vision AI model, and saves a formatted `.md` note to a private GitHub repository. Takes about 2 minutes per post.
+You paste something into the bot. It turns it into a neat `.md` note and saves it here.
+
+| You paste | What happens |
+|---|---|
+| Instagram URL | Bot pulls every slide from the carousel and saves as a structured note |
+| Any website URL | Link saved to your reading list (`pending-to-read.md`) |
+| Your own text | AI reads it, summarizes it, and saves as a structured note |
+
+Every note gets a title, tags, source link, and date, automatically.
+
+### Details
 
 - Paste URLs with or without tracking params (`?utm_source=...`) - they are stripped automatically
 - Handles carousels, single images, and mixed layouts
