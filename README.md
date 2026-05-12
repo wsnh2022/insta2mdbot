@@ -33,11 +33,12 @@ Every note gets a title, tags, source link, and date, automatically.
 - Summary inserted as an Obsidian `> [!summary]` callout block for quick scanning
 - Notes auto-routed into subfolders by primary tag (`notes/productivity/`, `notes/fitness/`, etc.)
 - Duplicate detection - skips re-processing if the same post has already been saved
+- Text mode: any URLs found embedded in your pasted content are added as a `### Further Reading` section at the bottom of the note
 - Live status updates - form shows "Processing...", "Still running...", "Done!" without refreshing
 - Three-model fallback chain - Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
 - If all three models fail, automatically retries the full chain after 1 min then 3 min before giving up
 - Runs in anonymous mode by default - no Instagram account risk. Session login available but not recommended (see Limitations)
-- AHK hotkey (`Alt+I`) - select any Instagram URL on screen, press the hotkey, it triggers the conversion instantly with no browser needed
+- AHK hotkey (`Alt+I`) - select any Instagram URL on screen, press the hotkey, triggers conversion with no browser needed. Uncomment line 80 of `ahk/insta_trigger.ahk` to activate it.
 
 **Output example:**
 
@@ -120,6 +121,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 |-----------|-----|
 | Passphrase on form | Worker rejects all requests without `X-Access-Key` header matching `ACCESS_KEY` secret |
 | Rate limiting | Max 10 requests per minute on the Worker |
+| Brute-force protection | 5 wrong passphrases from the same IP triggers a 45-minute lockout |
 | Private notes | Notes committed to a separate private repo - never in this public repo |
 | No secrets in code | GitHub PAT → Cloudflare Worker secret. OpenRouter key → GitHub Actions secret |
 | URL sanitisation | Worker strips all tracking params before passing URL to Actions |
@@ -145,6 +147,7 @@ insta2mdbot/
 │   ├── insta_trigger.ahk        # AHK v2 hotkey (Alt+I) - select URL → trigger Worker directly
 │   └── passphrase.txt           # Your passphrase - gitignored, create manually
 ├── redeploy.bat                 # One-click Worker redeployment (reads .cloudflare-token)
+├── gitsync.bat                  # git add/commit/push helper with pull --rebase fallback
 ├── requirements.txt             # instaloader, requests, Pillow
 ├── roadmap.md                   # Feature roadmap - tracks implemented and pending features
 ├── SETUP.md                     # Full setup guide with all known gotchas

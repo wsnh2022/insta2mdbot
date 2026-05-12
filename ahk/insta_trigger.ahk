@@ -9,8 +9,11 @@ class InstaBot {
     static WorkerUrl      := "https://instatomdnotes-worker.yogiswagger28.workers.dev"
     static AppTitle       := "Insta Bot"
 
-    ; Returns path to passphrase.txt sitting beside this script
-    static PassphraseFile() => A_ScriptDir "\passphrase.txt"
+    ; Returns path to passphrase.txt sitting beside insta_trigger.ahk, regardless of which script #Includes it
+    static PassphraseFile() {
+        SplitPath(A_LineFile, , &dir)
+        return dir "\passphrase.txt"
+    }
 
     static LoadPassphrase() {
         if !FileExist(InstaBot.PassphraseFile())
@@ -18,33 +21,51 @@ class InstaBot {
         return Trim(FileRead(InstaBot.PassphraseFile()))
     }
 
+    static JsonEscape(str) {
+        str := StrReplace(str, "\", "\\")
+        str := StrReplace(str, '"', '\"')
+        str := StrReplace(str, "`n", "\n")
+        str := StrReplace(str, "`r", "\r")
+        str := StrReplace(str, "`t", "\t")
+        return str
+    }
+
     static Trigger() {
         A_Clipboard := ""
         Send '^c'
         ClipWait 0.5
-        clip := A_Clipboard
+        clip := Trim(A_Clipboard)
 
-        ; Validate clipboard contains an Instagram post URL
-        if !InStr(clip, "instagram.com/p/") {
-            InstaBot.Toast("Not an Instagram post URL - copy a post link first", 3)
+        if (clip = "") {
+            InstaBot.Toast("Nothing copied - select some text or a URL first", 3)
             return
         }
 
-        ; Extract shortcode
-        if !RegExMatch(clip, "instagram\.com/p/([A-Za-z0-9_-]+)", &m) {
-            InstaBot.Toast("Could not extract shortcode from URL", 3)
-            return
-        }
-
-        cleanUrl   := "https://www.instagram.com/p/" . m[1] . "/"
         passphrase := InstaBot.LoadPassphrase()
-
         if (passphrase = "") {
             InstaBot.Toast("passphrase.txt is missing or empty - add it beside the script", 3)
             return
         }
 
-        body := '{"instagram_url":"' . cleanUrl . '"}'
+        local body, toastMsg
+
+        if InStr(clip, "instagram.com/p/") {
+            if !RegExMatch(clip, "instagram\.com/p/([A-Za-z0-9_-]+)", &m) {
+                InstaBot.Toast("Could not extract shortcode from URL", 3)
+                return
+            }
+            cleanUrl := "https://www.instagram.com/p/" . m[1] . "/"
+            body     := '{"instagram_url":"' . InstaBot.JsonEscape(cleanUrl) . '"}'
+            toastMsg := "Triggered - Instagram post processing"
+
+        } else if RegExMatch(clip, "^https?://") {
+            body     := '{"mode":"urls","content":"' . InstaBot.JsonEscape(clip) . '"}'
+            toastMsg := "Triggered - URL saved to reading list"
+
+        } else {
+            body     := '{"mode":"text","content":"' . InstaBot.JsonEscape(clip) . '"}'
+            toastMsg := "Triggered - text note processing"
+        }
 
         try {
             whr := ComObject("WinHttp.WinHttpRequest.5.1")
@@ -59,7 +80,7 @@ class InstaBot {
         }
 
         if (status = 200)
-            InstaBot.Toast("Triggered - GitHub Actions is processing the post", 1)
+            InstaBot.Toast(toastMsg, 1)
         else if (status = 401)
             InstaBot.Toast("Wrong passphrase - update passphrase.txt", 3)
         else if (status = 429)
