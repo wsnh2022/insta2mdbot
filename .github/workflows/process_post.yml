@@ -58,5 +58,7 @@ jobs:
           git config user.email "bot@instatomdnotes"
           git add .
           git diff --cached --quiet && echo "No new notes to commit" && exit 0
-          git commit -m "note(${{ inputs.mode }}): $(date -u +%Y-%m-%d)"
+          MODE="${{ inputs.mode }}"
+          [[ "$MODE" =~ ^(instagram|urls|text)$ ]] || { echo "Invalid mode: $MODE"; exit 1; }
+          git commit -m "note(${MODE}): $(date -u +%Y-%m-%d)"
           git push
