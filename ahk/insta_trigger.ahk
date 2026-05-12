@@ -1,9 +1,9 @@
-#SingleInstance Force
-#Requires AutoHotkey v2.0+
-~*^s::Reload
-Tray := A_TrayMenu, Tray.Delete() Tray.AddStandard() Tray.Add()
-Tray.Add("Open Folder", (*)=> Run(A_ScriptDir)) Tray.SetIcon("Open Folder", "shell32.dll",5)
-; -----------------
+; #SingleInstance Force
+; #Requires AutoHotkey v2.0+
+; ; ~*^s::Reload
+; Tray := A_TrayMenu, Tray.Delete() Tray.AddStandard() Tray.Add()
+; Tray.Add("Open Folder", (*)=> Run(A_ScriptDir)) Tray.SetIcon("Open Folder", "shell32.dll",5)
+; ; -----------------
 
 class InstaBot {
     static WorkerUrl      := "https://instatomdnotes-worker.yogiswagger28.workers.dev"
@@ -77,4 +77,4 @@ class InstaBot {
 }
 
 ; --- Hotkeys ---
-!i:: InstaBot.Trigger()
+; !i:: InstaBot.Trigger()

@@ -26,7 +26,7 @@ Paste any Instagram post URL → the app downloads every slide of the carousel, 
 - Live status updates - form shows "Processing...", "Still running...", "Done!" without refreshing
 - Three-model fallback chain - Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL
 - If all three models fail, automatically retries the full chain after 1 min then 3 min before giving up
-- Runs in anonymous mode by default — no Instagram account risk. Session login available but not recommended (see Limitations)
+- Runs in anonymous mode by default - no Instagram account risk. Session login available but not recommended (see Limitations)
 - AHK hotkey (`Alt+I`) - select any Instagram URL on screen, press the hotkey, it triggers the conversion instantly with no browser needed
 
 **Output example:**
@@ -191,13 +191,13 @@ At 20–30 posts/day spread across the day, rate limits are rarely hit. If all t
 | Limit | Value | Notes |
 |---|---|---|
 | Official API | None | instaloader scrapes without OAuth |
-| 403 blocks | Unpredictable | GitHub Actions IPs are datacenter IPs — Instagram flags them occasionally |
+| 403 blocks | Unpredictable | GitHub Actions IPs are datacenter IPs - Instagram flags them occasionally |
 | Safe pace | 1 post every 2–3 min | Sustained rapid requests risk a temporary IP block on the runner |
 | Session login | **Not recommended** | See warning below |
 
-The weakest point in the stack. A 403 from Instagram means that run fails — just re-submit the URL a few minutes later.
+The weakest point in the stack. A 403 from Instagram means that run fails - just re-submit the URL a few minutes later.
 
-> **⚠️ Do not set `INSTAGRAM_SESSION_ID`.** Using a real account session from a GitHub Actions datacenter IP (Azure/AWS) looks like an account hijack to Instagram's security system — it will lock your account. Anonymous mode gets occasional 403s on individual runs but carries no account risk. Just resubmit any failed URL.
+> **⚠️ Do not set `INSTAGRAM_SESSION_ID`.** Using a real account session from a GitHub Actions datacenter IP (Azure/AWS) looks like an account hijack to Instagram's security system - it will lock your account. Anonymous mode gets occasional 403s on individual runs but carries no account risk. Just resubmit any failed URL.
 
 ---
 

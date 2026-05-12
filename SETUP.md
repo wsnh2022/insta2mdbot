@@ -60,23 +60,23 @@ Add these secrets:
 |------|-------|----------|
 | `OPENROUTER_API_KEY` | Your OpenRouter API key | Yes |
 | `NOTES_REPO_PAT` | Your GitHub PAT (`ghp_...`) | Yes |
-| `INSTAGRAM_SESSION_ID` | Your Instagram `sessionid` cookie value | **Not recommended — see warning below** |
+| `INSTAGRAM_SESSION_ID` | Your Instagram `sessionid` cookie value | **Not recommended - see warning below** |
 
 > **Gotcha:** All secrets must be added to the **main code repo** (`insta2mdbot`), NOT to the private notes repo. The workflow runs in the code repo and reads secrets from there. Adding secrets to the notes repo has no effect.
 
 ---
 
-### ⚠️ INSTAGRAM_SESSION_ID — Do not use
+### ⚠️ INSTAGRAM_SESSION_ID - Do not use
 
 **Using a real Instagram session cookie from GitHub Actions will lock your account.**
 
 GitHub Actions runners are Azure/AWS datacenter IPs. When Instagram sees your account session authenticate from a datacenter IP in a foreign location, it treats it as an account hijack and immediately locks the account. This has happened in practice.
 
-**Leave `INSTAGRAM_SESSION_ID` unset.** The bot runs in anonymous mode by default — instaloader scrapes without logging in. You will get occasional 403 errors on individual runs (just resubmit the URL a few minutes later), but your account is never at risk.
+**Leave `INSTAGRAM_SESSION_ID` unset.** The bot runs in anonymous mode by default - instaloader scrapes without logging in. You will get occasional 403 errors on individual runs (just resubmit the URL a few minutes later), but your account is never at risk.
 
 | Mode | Account risk | 403 block rate |
 |------|-------------|----------------|
-| Anonymous (default, no secret set) | None | Occasional — resubmit and it clears |
+| Anonymous (default, no secret set) | None | Occasional - resubmit and it clears |
 | Session cookie (`INSTAGRAM_SESSION_ID` set) | **Account lock** | Lower, but not worth the risk |
 
 If you already have this secret set, delete it: **repo → Settings → Secrets and variables → Actions → `INSTAGRAM_SESSION_ID` → Delete**.
@@ -177,7 +177,7 @@ git push
 
 ### 8. AHK Hotkey (Optional)
 
-An AutoHotkey v2 script lets you trigger a conversion without opening the browser — select an Instagram URL anywhere on screen and press `Alt+I`.
+An AutoHotkey v2 script lets you trigger a conversion without opening the browser - select an Instagram URL anywhere on screen and press `Alt+I`.
 
 **Prerequisites:** [AutoHotkey v2](https://www.autohotkey.com/) installed (download and run the installer, default options).
 
@@ -188,17 +188,17 @@ An AutoHotkey v2 script lets you trigger a conversion without opening the browse
 
 **Usage:**
 
-1. In any app (browser, notes, anywhere) — select/highlight an Instagram post URL
+1. In any app (browser, notes, anywhere) - select/highlight an Instagram post URL
 2. Press `Alt+I`
 3. A Windows notification appears within a second:
-   - "Triggered — GitHub Actions is processing the post" → success
-   - "Wrong passphrase — update passphrase.txt" → passphrase mismatch
-   - "Rate limited — wait a minute and try again" → 10 req/min limit hit
-4. GitHub Actions runs in the background — the note appears in the private notes repo in ~2 min
+   - "Triggered - GitHub Actions is processing the post" → success
+   - "Wrong passphrase - update passphrase.txt" → passphrase mismatch
+   - "Rate limited - wait a minute and try again" → 10 req/min limit hit
+4. GitHub Actions runs in the background - the note appears in the private notes repo in ~2 min
 
-**How it works:** the script sends `Ctrl+C` to copy the selected text, extracts the shortcode via regex, and POSTs `{"instagram_url": "..."}` directly to the Cloudflare Worker with `X-Access-Key` set — identical to a form submission, no browser involved.
+**How it works:** the script sends `Ctrl+C` to copy the selected text, extracts the shortcode via regex, and POSTs `{"instagram_url": "..."}` directly to the Cloudflare Worker with `X-Access-Key` set - identical to a form submission, no browser involved.
 
-> **Note:** `ahk/passphrase.txt` is listed in `.gitignore` and will never be committed. The script file itself is safe to commit — it contains no secrets.
+> **Note:** `ahk/passphrase.txt` is listed in `.gitignore` and will never be committed. The script file itself is safe to commit - it contains no secrets.
 
 > **Tip:** Press `Ctrl+S` while editing the `.ahk` file to reload it instantly (built into the script header).
 
@@ -298,39 +298,39 @@ The following security improvements have been applied. Run `redeploy.bat` after 
 
 ### CORS locked to GitHub Pages only
 
-`worker/index.js` — `Access-Control-Allow-Origin` was changed from `*` (any site) to `https://wsnh2022.github.io` only. No other website's JavaScript can call the Worker, even if they know the URL and passphrase.
+`worker/index.js` - `Access-Control-Allow-Origin` was changed from `*` (any site) to `https://wsnh2022.github.io` only. No other website's JavaScript can call the Worker, even if they know the URL and passphrase.
 
-Direct API calls (AHK, curl, Postman) are unaffected — CORS is a browser-only restriction.
+Direct API calls (AHK, curl, Postman) are unaffected - CORS is a browser-only restriction.
 
 ---
 
 ### IP lockout after failed passphrase attempts
 
-`worker/index.js` — After 5 wrong passphrase attempts from the same IP, that IP is blocked for **45 minutes** on both GET and POST endpoints. Applies to brute-force attempts against the form and the AHK hotkey.
+`worker/index.js` - After 5 wrong passphrase attempts from the same IP, that IP is blocked for **45 minutes** on both GET and POST endpoints. Applies to brute-force attempts against the form and the AHK hotkey.
 
 ---
 
 ### Rate limiting extended to GET endpoint
 
-`worker/index.js` — The status-polling GET endpoint was previously unprotected. It now shares the same IP lockout as POST, preventing rapid passphrase probing via the status endpoint.
+`worker/index.js` - The status-polling GET endpoint was previously unprotected. It now shares the same IP lockout as POST, preventing rapid passphrase probing via the status endpoint.
 
 ---
 
 ### Passphrase strength
 
-`ACCESS_KEY` (Cloudflare Worker secret) should be at minimum 12 characters with uppercase, lowercase, numbers, and symbols. This gives ~72 bits of entropy — combined with the IP lockout, brute force is not a practical attack.
+`ACCESS_KEY` (Cloudflare Worker secret) should be at minimum 12 characters with uppercase, lowercase, numbers, and symbols. This gives ~72 bits of entropy - combined with the IP lockout, brute force is not a practical attack.
 
 To update: `npx wrangler secret put ACCESS_KEY` (with `$env:CLOUDFLARE_API_TOKEN` set).
 
 ---
 
-### GitHub PATs — use classic tokens only
+### GitHub PATs - use classic tokens only
 
 Generate one classic token and use it for both `GITHUB_PAT` and `NOTES_REPO_PAT`.
 
 **Scopes required:**
-- `repo` — full access (required for private repo checkout in Actions)
-- `workflow` — required to trigger `workflow_dispatch`
+- `repo` - full access (required for private repo checkout in Actions)
+- `workflow` - required to trigger `workflow_dispatch`
 
 Generate at: **GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)**
 
@@ -364,7 +364,7 @@ Generate at: **GitHub → Settings → Developer settings → Personal access to
     │  Checks out private notes repo → notes/
     │  pip install instaloader, requests, Pillow
     │  process.py:
-    │    1. Check _processed.txt — skip if shortcode already saved
+    │    1. Check _processed.txt - skip if shortcode already saved
     │    2. Download carousel slides via instaloader
     │       (uses sessionid cookie if INSTAGRAM_SESSION_ID secret is set)
     │    3. Resize each slide to max 768px (Pillow)

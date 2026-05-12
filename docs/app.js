@@ -1,12 +1,39 @@
 const WORKER_URL = "https://instatomdnotes-worker.yogiswagger28.workers.dev";
 const BATCH_DELAY_MS = 30000;
 
+function updateModeBadge() {
+  const raw = document.getElementById("urls").value.trim();
+  const badge = document.getElementById("mode-badge");
+  if (!raw) { badge.className = "mode-badge hidden"; return; }
+
+  const { mode, lines } = detectMode(raw);
+  const count = lines.length;
+
+  if (mode === "instagram") {
+    const igCount = lines.filter(l => l.includes("instagram.com/p/")).length;
+    badge.textContent = igCount === 1
+      ? "📸 Instagram carousel → note"
+      : `📸 ${igCount} Instagram URLs → ${igCount} notes (batch)`;
+    badge.className = "mode-badge mode-ig";
+  } else if (mode === "urls") {
+    badge.textContent = count === 1
+      ? "🔗 Plain URL → reading list"
+      : `🔗 ${count} URLs → reading list`;
+    badge.className = "mode-badge mode-url";
+  } else {
+    badge.textContent = "✏️ Raw text → AI-generated note";
+    badge.className = "mode-badge mode-text";
+  }
+}
+
 const form = document.getElementById("submit-form");
 const btn = document.getElementById("submit-btn");
 const status = document.getElementById("status");
 const passphraseInput = document.getElementById("passphrase");
 const passphraseGroup = document.getElementById("passphrase-group");
 const passphraseLock = document.getElementById("passphrase-lock");
+
+document.getElementById("urls").addEventListener("input", updateModeBadge);
 
 // On load — if passphrase already saved, hide the field
 if (sessionStorage.getItem("passphrase")) {
@@ -114,7 +141,7 @@ async function submitSingle(url, passphrase) {
     const data = await resp.json();
     if (resp.ok && data.status === "triggered") {
       showStatus("Processing carousel... checking status in 20s.", "success");
-      document.getElementById("urls").value = "";
+      document.getElementById("urls").value = ""; updateModeBadge();
       pollStatus(passphrase);
     } else if (resp.status === 401) {
       showStatus("Wrong passphrase.", "error");
@@ -158,7 +185,7 @@ async function submitBatch(urls, passphrase) {
 
   if (failed === 0) {
     showStatus(`All ${submitted} submitted. Notes ready in ~${estMin} min.`, "success");
-    document.getElementById("urls").value = "";
+    document.getElementById("urls").value = ""; updateModeBadge();
   } else if (submitted > 0) {
     showStatus(`${submitted} submitted, ${failed} failed. Notes ready in ~${estMin} min.`, "success");
   } else {
@@ -182,7 +209,7 @@ async function submitContent(mode, content, passphrase) {
         showStatus("Processing text... note ready in ~1 min.", "success");
         pollStatus(passphrase);
       }
-      document.getElementById("urls").value = "";
+      document.getElementById("urls").value = ""; updateModeBadge();
     } else if (resp.status === 401) {
       showStatus("Wrong passphrase.", "error");
     } else if (resp.status === 429) {

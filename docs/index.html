@@ -25,14 +25,20 @@
 
           <div class="form-group">
             <label for="urls">Paste a URL or text</label>
+            <div class="feature-chips">
+              <span class="chip chip-ig">📸 Instagram · batch</span>
+              <span class="chip chip-url">🔗 Reading list</span>
+              <span class="chip chip-text">✏️ AI note</span>
+            </div>
             <textarea
               id="urls"
               name="urls"
-              placeholder="Instagram URL → carousel note&#10;Plain URLs → saved to reading list&#10;Any text → AI-generated note"
+              placeholder="Instagram URL → carousel note (up to 10)&#10;Plain URLs → saved to reading list (up to 10)&#10;Any text → AI-generated note"
               rows="5"
               autocomplete="off"
             ></textarea>
-            <p class="hint">Instagram URLs · plain URLs (reading list) · raw text (AI note) · max 10 URLs or 10,000 chars</p>
+            <div id="mode-badge" class="mode-badge hidden"></div>
+            <p class="hint">Auto-detects mode · max 10 URLs or 10,000 chars</p>
           </div>
 
           <div class="btn-row">

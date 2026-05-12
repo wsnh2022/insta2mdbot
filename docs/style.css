@@ -24,7 +24,7 @@ main {
   overflow: hidden;
 }
 
-/* Cover image — natural aspect ratio, no cropping */
+/* Cover image - natural aspect ratio, no cropping */
 .cover {
   width: 100%;
   display: block;
@@ -58,7 +58,7 @@ textarea#urls {
   border: 1px solid #30363d;
   border-radius: 6px;
   color: #e6edf3;
-  font-size: 1rem; /* 16px — prevents iOS Safari zoom on focus */
+  font-size: 1rem; /* 16px - prevents iOS Safari zoom on focus */
   font-family: inherit;
   -webkit-appearance: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -85,6 +85,39 @@ textarea#urls {
   font-size: 0.7rem;
   color: #484f58;
 }
+
+/* Feature chips — static pills above textarea */
+.feature-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.chip-ig   { background: #2d1b4e; color: #c084fc; border: 1px solid rgba(124,58,237,0.27); }
+.chip-url  { background: #0d2a40; color: #58a6ff; border: 1px solid rgba(88,166,255,0.27); }
+.chip-text { background: #1a2a1a; color: #3fb950; border: 1px solid #238636; }
+
+/* Live mode badge — dynamic pill below textarea */
+.mode-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  transition: opacity 0.2s;
+}
+
+.mode-ig   { background: #2d1b4e; color: #c084fc; border: 1px solid rgba(124,58,237,0.27); }
+.mode-url  { background: #0d2a40; color: #58a6ff; border: 1px solid rgba(88,166,255,0.27); }
+.mode-text { background: #0d1e1a; color: #3fb950; border: 1px solid rgba(35,134,54,0.27); }
 
 /* Button row: lock + convert side by side */
 .btn-row {
