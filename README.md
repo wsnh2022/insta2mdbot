@@ -1,5 +1,5 @@
 ![cover](docs/cover.png)
-# INSTA_TO_MD_BOT
+# Insta2mdbot
 
 Paste a URL or text into the form. The bot saves it as a neat `.md` note to your private repo.
 
