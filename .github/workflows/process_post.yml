@@ -20,7 +20,7 @@ on:
         description: 'Push carousel to Notion database (mode=instagram only)'
         required: false
         type: boolean
-        default: false
+        default: true
       notion_title_override:
         description: 'Override the AI-generated title in Notion (optional)'
         required: false

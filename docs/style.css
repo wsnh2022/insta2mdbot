@@ -181,27 +181,3 @@ button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
 .status.error   { background: #2a0d0d; border: 1px solid #f85149; color: #f85149; }
 .hidden { display: none; }
 
-/* Notion toggle */
-.notion-toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: #1a1225;
-  border: 1px solid rgba(124,58,237,0.3);
-  border-radius: 6px;
-  cursor: pointer;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
-  font-size: 0.82rem;
-  color: #c084fc;
-}
-
-.notion-toggle-label input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: #c084fc;
-  flex-shrink: 0;
-}
