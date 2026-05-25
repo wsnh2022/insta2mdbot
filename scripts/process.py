@@ -98,11 +98,12 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
         if "error" in data:
             raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
         raw = data["choices"][0]["message"]["content"].strip()
-        if "```" in raw:
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw.strip())
+        # Extract JSON object robustly — handles preamble/postamble text
+        start = raw.find('{')
+        end = raw.rfind('}')
+        if start == -1 or end == -1:
+            raise RuntimeError(f"No JSON object found in response: {raw[:200]}")
+        return json.loads(raw[start:end + 1])
     raise RuntimeError("get_metadata_and_summary_from_images: exhausted retries")
 
 

@@ -29,13 +29,13 @@ function updateModeBadge() {
     badge.className = "mode-badge mode-url";
     toggleRow.classList.add("hidden");
     toggle.checked = true;
-    document.getElementById("toggle-hint").textContent = "Full note · GitHub backup";
+    document.getElementById("toggle-hint").textContent = "Full note + GitHub backup";
   } else {
     badge.textContent = "✏️ Raw text → AI-generated note";
     badge.className = "mode-badge mode-text";
     toggleRow.classList.add("hidden");
     toggle.checked = true;
-    document.getElementById("toggle-hint").textContent = "Full note · GitHub backup";
+    document.getElementById("toggle-hint").textContent = "Full note + GitHub backup";
   }
 }
 
@@ -50,8 +50,8 @@ document.getElementById("urls").addEventListener("input", updateModeBadge);
 
 document.getElementById("extract-text-toggle").addEventListener("change", function () {
   document.getElementById("toggle-hint").textContent = this.checked
-    ? "Full note · GitHub backup"
-    : "Images only · 1 AI call";
+    ? "Full note + GitHub backup"
+    : "Metadata · 1 AI call";
 });
 
 // On load — if passphrase already saved, hide the field
