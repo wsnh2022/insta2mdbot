@@ -163,6 +163,9 @@ async function submitSingle(url, passphrase, submittedUrl) {
       showStatus("Processing carousel... checking status in 20s.", "success");
       document.getElementById("urls").value = ""; updateModeBadge();
       pollStatus(passphrase, submittedUrl);
+    } else if (resp.ok && data.status === "duplicate") {
+      showStatus(`Already saved — ${data.shortcode} was processed before.`, "success");
+      document.getElementById("urls").value = ""; updateModeBadge();
     } else if (resp.status === 401) {
       showStatus("Wrong passphrase.", "error");
     } else if (resp.status === 429) {
@@ -178,9 +181,12 @@ async function submitSingle(url, passphrase, submittedUrl) {
 async function submitBatch(urls, passphrase) {
   const extractText = document.getElementById("extract-text-toggle").checked;
   let failed = 0;
+  let duplicates = 0;
+  let triggered = 0;
 
   for (let i = 0; i < urls.length; i++) {
     btn.textContent = `Submitting ${i + 1}/${urls.length}...`;
+    let isDuplicate = false;
     try {
       const resp = await fetch(WORKER_URL, {
         method: "POST",
@@ -191,26 +197,46 @@ async function submitBatch(urls, passphrase) {
         showStatus("Wrong passphrase.", "error");
         return;
       }
-      if (!resp.ok) failed++;
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === "duplicate") {
+          duplicates++;
+          isDuplicate = true;
+        } else if (data.status === "triggered") {
+          triggered++;
+        } else {
+          failed++;
+        }
+      } else {
+        failed++;
+      }
     } catch {
       failed++;
     }
 
-    if (i < urls.length - 1) {
+    // Skip the delay after duplicates — no workflow was triggered, no need to wait
+    if (i < urls.length - 1 && !isDuplicate) {
       await sleep(BATCH_DELAY_MS);
     }
   }
 
-  const submitted = urls.length - failed;
-  const estMin = submitted * 2;
+  const estMin = triggered * 2;
+  const parts = [];
+  if (triggered > 0) parts.push(`${triggered} submitted`);
+  if (duplicates > 0) parts.push(`${duplicates} already saved`);
+  if (failed > 0) parts.push(`${failed} failed`);
 
-  if (failed === 0) {
-    showStatus(`All ${submitted} submitted. Notes ready in ~${estMin} min.`, "success");
-    document.getElementById("urls").value = ""; updateModeBadge();
-  } else if (submitted > 0) {
-    showStatus(`${submitted} submitted, ${failed} failed. Notes ready in ~${estMin} min.`, "success");
+  if (triggered === 0 && duplicates > 0 && failed === 0) {
+    showStatus(`All ${duplicates} already saved — nothing new to process.`, "success");
+  } else if (triggered > 0) {
+    const suffix = estMin > 0 ? `. Notes ready in ~${estMin} min.` : ".";
+    showStatus(parts.join(", ") + suffix, failed > 0 ? "error" : "success");
   } else {
     showStatus("All submissions failed. Check your connection and try again.", "error");
+  }
+
+  if (failed === 0 || triggered > 0) {
+    document.getElementById("urls").value = ""; updateModeBadge();
   }
 }
 

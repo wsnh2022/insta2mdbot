@@ -140,7 +140,29 @@ export default {
       if (!shortcodeMatch) {
         return jsonResponse({ error: "Invalid Instagram URL" }, 400, corsOrigin);
       }
-      const cleanUrl = `https://www.instagram.com/p/${shortcodeMatch[1]}/`;
+      const shortcode = shortcodeMatch[1];
+      const cleanUrl = `https://www.instagram.com/p/${shortcode}/`;
+
+      // Pre-check _processed.txt before triggering a workflow
+      try {
+        const processedResp = await fetch(
+          `https://raw.githubusercontent.com/${env.GITHUB_REPO_OWNER}/${env.GITHUB_NOTES_REPO_NAME}/main/notes/_processed.txt`,
+          {
+            headers: {
+              "Authorization": `token ${env.GITHUB_PAT}`,
+              "User-Agent": "instatomdnotes-worker",
+            },
+          }
+        );
+        if (processedResp.ok) {
+          const processed = await processedResp.text();
+          const shortcodes = processed.split("\n").map(s => s.trim()).filter(Boolean);
+          if (shortcodes.includes(shortcode)) {
+            return jsonResponse({ status: "duplicate", shortcode }, 200, corsOrigin);
+          }
+        }
+      } catch (_) { /* if the check fails, fall through and let the workflow handle it */ }
+
       workflowInputs = {
         mode: "instagram",
         instagram_url: cleanUrl,

@@ -7,5 +7,6 @@ account_id = "a0d2686f0804c32456ef0f58975e9853"
 [vars]
 GITHUB_REPO_OWNER = "wsnh2022"
 GITHUB_REPO_NAME = "insta2mdbot"
+GITHUB_NOTES_REPO_NAME = "insta2mdbot-notes"
 GITHUB_WORKFLOW_FILE = "process_post.yml"
 GITHUB_REF = "main"
