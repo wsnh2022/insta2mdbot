@@ -93,6 +93,7 @@ GitHub Actions runner (ubuntu)
       ↓  builds .md note with YAML frontmatter + summary callout
       ↓  saves to notes/{primary-tag}/{slug}.md
       ↓  commits and pushes to private notes repo
+      ↓  pushes to Notion database (title, tags, summary, images, source URL)
 github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 ```
 
@@ -113,6 +114,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 | Note format | YAML frontmatter + Obsidian `> [!summary]` callout, auto-routed to topic subfolder |
 | Duplicate guard | `notes/_processed.txt` - shortcode log, skips re-processing |
 | Note storage | Separate private GitHub repo |
+| Notion integration | Notion API - page creation with title, tags, summary, date, images, and source URL |
 
 ---
 
@@ -141,7 +143,8 @@ insta2mdbot/
 │   ├── index.js                 # Cloudflare Worker - auth, rate limit, URL clean, trigger
 │   └── wrangler.toml            # Worker config (account_id, env vars)
 ├── scripts/
-│   └── process.py               # Download → resize → extract → metadata → build note
+│   ├── process.py               # Download → resize → extract → metadata → build note
+│   └── notion_push.py           # Reads metadata.json, creates Notion page, uploads images
 ├── .github/workflows/
 │   └── process_post.yml         # Checks out notes repo, runs process.py, pushes note
 ├── ahk/
@@ -248,4 +251,4 @@ To use a custom title instead of the AI-generated one, trigger the workflow manu
 
 ## Full setup guide
 
-See [SETUP.md](SETUP.md) for step-by-step instructions including all issues encountered during the original setup and exactly how to fix them.
+See [SETUP.md](SETUP.md) for a complete step-by-step setup guide, including known issues and their fixes.
