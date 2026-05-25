@@ -111,7 +111,7 @@ export default {
       return jsonResponse({ error: "Invalid JSON body" }, 400, corsOrigin);
     }
 
-    const { instagram_url, mode, content, push_to_notion } = body;
+    const { instagram_url, mode, content, push_to_notion, extract_text } = body;
 
     let workflowInputs;
 
@@ -125,6 +125,7 @@ export default {
         mode: "instagram",
         instagram_url: cleanUrl,
         push_to_notion: push_to_notion === true ? "true" : "false",
+        extract_text: extract_text === false ? "false" : "true",
       };
 
     } else if (mode === "urls" || mode === "text") {

@@ -4,7 +4,13 @@ const BATCH_DELAY_MS = 30000;
 function updateModeBadge() {
   const raw = document.getElementById("urls").value.trim();
   const badge = document.getElementById("mode-badge");
-  if (!raw) { badge.className = "mode-badge hidden"; return; }
+  const toggleRow = document.getElementById("extract-toggle-row");
+  const toggle = document.getElementById("extract-text-toggle");
+  if (!raw) {
+    badge.className = "mode-badge hidden";
+    toggleRow.classList.add("hidden");
+    return;
+  }
 
   const { mode, lines } = detectMode(raw);
   const count = lines.length;
@@ -15,14 +21,21 @@ function updateModeBadge() {
       ? "📸 Instagram carousel → note"
       : `📸 ${igCount} Instagram URLs → ${igCount} notes (batch)`;
     badge.className = "mode-badge mode-ig";
+    toggleRow.classList.remove("hidden");
   } else if (mode === "urls") {
     badge.textContent = count === 1
       ? "🔗 Plain URL → reading list"
       : `🔗 ${count} URLs → reading list`;
     badge.className = "mode-badge mode-url";
+    toggleRow.classList.add("hidden");
+    toggle.checked = true;
+    document.getElementById("toggle-hint").textContent = "Full note · GitHub backup";
   } else {
     badge.textContent = "✏️ Raw text → AI-generated note";
     badge.className = "mode-badge mode-text";
+    toggleRow.classList.add("hidden");
+    toggle.checked = true;
+    document.getElementById("toggle-hint").textContent = "Full note · GitHub backup";
   }
 }
 
@@ -34,6 +47,12 @@ const passphraseGroup = document.getElementById("passphrase-group");
 const passphraseLock = document.getElementById("passphrase-lock");
 
 document.getElementById("urls").addEventListener("input", updateModeBadge);
+
+document.getElementById("extract-text-toggle").addEventListener("change", function () {
+  document.getElementById("toggle-hint").textContent = this.checked
+    ? "Full note · GitHub backup"
+    : "Images only · 1 AI call";
+});
 
 // On load — if passphrase already saved, hide the field
 if (sessionStorage.getItem("passphrase")) {
@@ -131,12 +150,13 @@ form.addEventListener("submit", async (e) => {
 });
 
 async function submitSingle(url, passphrase) {
+  const extractText = document.getElementById("extract-text-toggle").checked;
   btn.textContent = "Submitting...";
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Access-Key": passphrase },
-      body: JSON.stringify({ instagram_url: url, push_to_notion: true }),
+      body: JSON.stringify({ instagram_url: url, push_to_notion: true, extract_text: extractText }),
     });
     const data = await resp.json();
     if (resp.ok && data.status === "triggered") {
@@ -156,6 +176,7 @@ async function submitSingle(url, passphrase) {
 }
 
 async function submitBatch(urls, passphrase) {
+  const extractText = document.getElementById("extract-text-toggle").checked;
   let failed = 0;
 
   for (let i = 0; i < urls.length; i++) {
@@ -164,7 +185,7 @@ async function submitBatch(urls, passphrase) {
       const resp = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Access-Key": passphrase },
-        body: JSON.stringify({ instagram_url: urls[i], push_to_notion: true }),
+        body: JSON.stringify({ instagram_url: urls[i], push_to_notion: true, extract_text: extractText }),
       });
       if (resp.status === 401) {
         showStatus("Wrong passphrase.", "error");

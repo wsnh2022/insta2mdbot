@@ -21,6 +21,11 @@ on:
         required: false
         type: boolean
         default: true
+      extract_text:
+        description: 'Extract text via vision AI (instagram only). False = images only, 1 AI call'
+        required: false
+        type: boolean
+        default: true
       notion_title_override:
         description: 'Override the AI-generated title in Notion (optional)'
         required: false
@@ -58,6 +63,7 @@ jobs:
           INSTAGRAM_SESSION_ID: ${{ secrets.INSTAGRAM_SESSION_ID }}
           MODE: ${{ inputs.mode }}
           CONTENT: ${{ inputs.content }}
+          EXTRACT_TEXT: ${{ inputs.extract_text }}
         run: python scripts/process.py
 
       - name: Push to Notion

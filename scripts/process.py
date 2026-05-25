@@ -16,6 +16,7 @@ INSTAGRAM_URL = os.environ.get("INSTAGRAM_URL", "")
 MODE = os.environ.get("MODE", "instagram").strip().lower()
 CONTENT = os.environ.get("CONTENT", "")
 NOTES_DIR = Path("notes")
+EXTRACT_TEXT = os.environ.get("EXTRACT_TEXT", "true").strip().lower() != "false"
 PRIMARY_MODEL = "google/gemini-2.5-flash-lite"
 FALLBACK_MODEL = "qwen/qwen3.5-9b"
 FALLBACK_MODEL_2 = "nvidia/nemotron-nano-12b-v1"
@@ -51,6 +52,49 @@ Capture the core idea and single most useful takeaway. No bullet points, no form
 
 Content:
 {content}"""
+
+
+IMAGE_ONLY_PROMPT = """Look at these carousel slides and return a JSON object with exactly three keys:
+- "title": a concise 5-8 word title describing the core topic (title case, no hashtags)
+- "tags": an array of 3-5 relevant lowercase topic tags without the # symbol
+- "summary": a 2-3 sentence plain prose summary of the core idea and most useful takeaway
+
+Return only valid JSON. No explanation, no markdown code block."""
+
+
+def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
+    """Single vision AI call: returns title, tags, and summary directly from images."""
+    content = []
+    for img_path in images:
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{encode_image(img_path)}"}
+        })
+    content.append({"type": "text", "text": IMAGE_ONLY_PROMPT})
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/instatomdnotes",
+    }
+    body = {
+        "model": PRIMARY_MODEL,
+        "messages": [{"role": "user", "content": content}],
+        "max_tokens": 300,
+    }
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers=headers, json=body, timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if "error" in data:
+        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+    raw = data["choices"][0]["message"]["content"].strip()
+    if "```" in raw:
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw.strip())
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
@@ -233,6 +277,36 @@ def process_instagram():
     tmp_dir = Path("/tmp/insta_download")
     shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
     processed_log = NOTES_DIR / "_processed.txt"
+
+    if not EXTRACT_TEXT:
+        print(f"[MODE] images only — skipping text extraction")
+        print(f"[1/3] Downloading: {INSTAGRAM_URL}")
+        try:
+            images = download_carousel(INSTAGRAM_URL, tmp_dir)
+        except Exception as e:
+            print(f"[ERROR] Download failed: {e}")
+            sys.exit(1)
+        images = [resize_image(p) for p in images]
+        print(f"      Found {len(images)} image(s), resized to max 768px")
+        if not images:
+            print("[ERROR] No images found. Exiting.")
+            sys.exit(1)
+        print(f"[2/3] Getting title, tags and summary from images (1 AI call)...")
+        title, tags, summary = shortcode, [], ""
+        try:
+            result = get_metadata_and_summary_from_images(images)
+            title = result.get("title", shortcode)
+            tags = result.get("tags", [])
+            summary = result.get("summary", "")
+            print(f"      Done: {title}")
+        except Exception as e:
+            print(f"      AI call failed: {e} — using shortcode as title")
+        print(f"[3/3] Writing metadata for Notion...")
+        Path("/tmp/metadata.json").write_text(
+            json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": ""}),
+            encoding="utf-8",
+        )
+        return
 
     if processed_log.exists():
         if shortcode in processed_log.read_text(encoding="utf-8").splitlines():
