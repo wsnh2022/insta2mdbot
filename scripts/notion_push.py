@@ -64,11 +64,17 @@ def upload_image(image_path: Path) -> str:
     upload_url = data["upload_url"]
 
     with open(image_path, "rb") as f:
-        upload_resp = requests.put(
+        upload_resp = requests.post(
             upload_url,
+            headers={
+                "Authorization": f"Bearer {NOTION_TOKEN}",
+                "Notion-Version": "2022-06-28",
+            },
             files={"file": (image_path.name, f, "image/jpeg")},
             timeout=60,
         )
+    if not upload_resp.ok:
+        print(f"UPLOAD_ERROR {upload_resp.status_code}: {upload_resp.text}", file=sys.stderr, flush=True)
     upload_resp.raise_for_status()
     return upload_id
 
