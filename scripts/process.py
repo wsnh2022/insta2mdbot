@@ -232,7 +232,37 @@ def process_instagram():
 
     if processed_log.exists():
         if shortcode in processed_log.read_text(encoding="utf-8").splitlines():
-            print(f"[SKIP] Already processed: {shortcode}")
+            print(f"[NOTION] Already processed: {shortcode} — re-downloading for Notion push only")
+            try:
+                images = download_carousel(INSTAGRAM_URL, tmp_dir)
+                images = [resize_image(p) for p in images]
+                print(f"      Found {len(images)} image(s), resized to max 768px")
+            except Exception as e:
+                print(f"      Re-download failed: {e} — skipping Notion push")
+                sys.exit(0)
+            existing_md = None
+            for md_path in NOTES_DIR.glob("**/*.md"):
+                text = md_path.read_text(encoding="utf-8")
+                if shortcode in text or INSTAGRAM_URL in text:
+                    existing_md = text
+                    break
+            title, tags, summary, extracted = shortcode, [], "", ""
+            if existing_md:
+                parts = existing_md.split("---", 2)
+                if len(parts) >= 3:
+                    fm = parts[1]
+                    tm = re.search(r'title:\s*"?(.+?)"?\s*$', fm, re.MULTILINE)
+                    title = tm.group(1).strip('"') if tm else shortcode
+                    tags = re.findall(r'^\s+- (.+)$', fm, re.MULTILINE)
+                    body = parts[2].strip()
+                    sm = re.search(r'>\s*\[!summary\]\n((?:>.*\n?)+)', body)
+                    if sm:
+                        summary = " ".join(re.findall(r'^>\s*(.+)$', sm.group(1), re.MULTILINE)).strip()
+                    extracted = re.sub(r'>\s*\[!summary\]\n(?:>.*\n?)+', '', body).strip()
+            Path("/tmp/metadata.json").write_text(
+                json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
+                encoding="utf-8",
+            )
             sys.exit(0)
 
     print(f"[1/5] Downloading: {INSTAGRAM_URL}")
