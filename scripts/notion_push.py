@@ -117,12 +117,27 @@ def append_blocks_batched(page_id: str, blocks: list):
         )
 
 
-def page_exists(source_url: str) -> bool:
+def get_existing_page(source_url: str):
+    """Returns (page_id, has_summary) if a page exists for source_url, else (None, False)."""
     resp = notion_post(
         f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query",
         json={"filter": {"property": "Source", "url": {"equals": source_url}}, "page_size": 1},
     )
-    return len(resp.json().get("results", [])) > 0
+    results = resp.json().get("results", [])
+    if not results:
+        return None, False
+    page = results[0]
+    page_id = page["id"]
+    summary_blocks = page.get("properties", {}).get("Summary", {}).get("rich_text", [])
+    has_summary = any(b.get("text", {}).get("content", "").strip() for b in summary_blocks)
+    return page_id, has_summary
+
+
+def patch_summary(page_id: str, summary: str):
+    notion_patch(
+        f"https://api.notion.com/v1/pages/{page_id}",
+        json={"properties": {"Summary": {"rich_text": [{"text": {"content": summary[:2000]}}]}}},
+    )
 
 
 def load_metadata():
@@ -236,9 +251,16 @@ def main():
 
     images = sorted(IMAGES_DIR.glob("*.jpg")) if IMAGES_DIR.exists() else []
 
-    if source_url and page_exists(source_url):
-        print(f"[SKIP] Notion page already exists for {source_url}")
-        sys.exit(0)
+    if source_url:
+        existing_id, has_summary = get_existing_page(source_url)
+        if existing_id:
+            if has_summary or not summary:
+                print(f"[SKIP] Notion page already exists for {source_url}")
+                sys.exit(0)
+            print(f"[UPDATE] Page exists but Summary is empty — patching: {existing_id}")
+            patch_summary(existing_id, summary)
+            print(f"[DONE] Summary patched on existing page.")
+            sys.exit(0)
 
     print(f"[1/4] Creating Notion page: {title}")
     page_id = create_page(title, tags, summary, source_url, date_str)
