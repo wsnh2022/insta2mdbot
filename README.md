@@ -215,6 +215,41 @@ The weakest point in the stack. A 403 from Instagram means that run fails - just
 
 ---
 
+## Optional: Notion push
+
+Instagram carousels can also be pushed to a Notion database alongside the existing markdown flow. The markdown note is always saved first - Notion push is additive and opt-in per run.
+
+### What gets created
+
+Each carousel becomes one row in a Notion database with these properties: title, source URL, tags, date, and summary. Opening the page shows all slide images in order.
+
+### Setup
+
+1. Go to [developers.notion.com](https://developers.notion.com) and create a new integration (Access token type). Copy the token.
+2. Create a Notion database with these properties:
+
+| Property | Type |
+|----------|------|
+| Name | Title (default) |
+| Source | URL |
+| Tags | Multi-select |
+| Date | Date |
+| Summary | Rich Text |
+
+3. Open the database in Notion, click `...` > Connections, and connect your integration.
+4. Copy the database ID from the URL (32-char string before the `?v=`).
+5. Add two GitHub Actions secrets to this repo: `NOTION_TOKEN` and `NOTION_DATABASE_ID`.
+
+### Triggering
+
+Notion push is manual-only via GitHub Actions UI. The frontend, AHK, and Worker are unaffected.
+
+Go to Actions > Process Instagram Post > Run workflow, select your branch, paste an Instagram URL, and tick **Push carousel to Notion database**.
+
+Optionally fill **Override the AI-generated title in Notion** to use a custom title instead of the AI-generated one.
+
+---
+
 ## Full setup guide
 
 See [SETUP.md](SETUP.md) for step-by-step instructions including all issues encountered during the original setup and exactly how to fix them.
