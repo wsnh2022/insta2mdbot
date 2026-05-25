@@ -301,7 +301,7 @@ def process_instagram():
     print(f"[5/5] Saved: {note_path}")
 
     Path("/tmp/metadata.json").write_text(
-        json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL}),
+        json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
         encoding="utf-8",
     )
 

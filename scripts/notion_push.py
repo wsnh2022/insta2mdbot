@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import re
 import time
 import requests
 from pathlib import Path
@@ -48,6 +49,37 @@ def notion_patch(url, **kwargs):
         resp.raise_for_status()
         return resp
     raise RuntimeError("notion_patch: exhausted retries")
+
+
+def markdown_to_blocks(text: str) -> list:
+    blocks = []
+    for line in text.splitlines():
+        line = line.rstrip()
+        if not line or line.startswith("---"):
+            continue
+        # Strip bold/italic markers so they don't show as literal ** in Notion
+        line = re.sub(r'\*\*(.+?)\*\*', r'\1', line)
+        line = re.sub(r'\*(.+?)\*', r'\1', line)
+        content = line[:2000]
+        if line.startswith("### "):
+            blocks.append({"type": "heading_3", "heading_3": {"rich_text": [{"type": "text", "text": {"content": line[4:].strip()}}]}})
+        elif line.startswith("## "):
+            blocks.append({"type": "heading_2", "heading_2": {"rich_text": [{"type": "text", "text": {"content": line[3:].strip()}}]}})
+        elif re.match(r'^\d+\. ', line):
+            blocks.append({"type": "numbered_list_item", "numbered_list_item": {"rich_text": [{"type": "text", "text": {"content": re.sub(r'^\d+\. ', '', line)}}]}})
+        elif line.startswith("- ") or line.startswith("* "):
+            blocks.append({"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": [{"type": "text", "text": {"content": line[2:]}}]}})
+        else:
+            blocks.append({"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": content}}]}})
+    return blocks
+
+
+def append_blocks_batched(page_id: str, blocks: list):
+    for i in range(0, len(blocks), 100):
+        notion_patch(
+            f"https://api.notion.com/v1/blocks/{page_id}/children",
+            json={"children": blocks[i:i+100]},
+        )
 
 
 def load_metadata():
@@ -156,15 +188,26 @@ def main():
     tags = metadata.get("tags", [])
     summary = metadata.get("summary", "")
     source_url = metadata.get("url", "")
+    extracted = metadata.get("extracted", "")
     date_str = datetime.now().strftime("%Y-%m-%d")
 
     images = sorted(IMAGES_DIR.glob("*.jpg")) if IMAGES_DIR.exists() else []
 
-    print(f"[1/3] Creating Notion page: {title}")
+    print(f"[1/4] Creating Notion page: {title}")
     page_id = create_page(title, tags, summary, source_url, date_str)
     print(f"      Page created: {page_id}")
 
-    print(f"[2/3] Uploading {len(images)} image(s)...")
+    if extracted:
+        print(f"[2/4] Appending extracted text...")
+        try:
+            blocks = markdown_to_blocks(extracted)
+            blocks.append({"type": "divider", "divider": {}})
+            append_blocks_batched(page_id, blocks)
+            print(f"      {len(blocks) - 1} text blocks appended")
+        except Exception as e:
+            print(f"      Text blocks failed (non-fatal): {e}")
+
+    print(f"[3/4] Uploading {len(images)} image(s)...")
     uploaded = 0
     for i, img_path in enumerate(images):
         try:
@@ -177,7 +220,7 @@ def main():
         except Exception as e:
             print(f"      [{i+1}/{len(images)}] FAILED: {img_path.name} — {e}")
 
-    print(f"[3/3] Appending footer...")
+    print(f"[4/4] Appending footer...")
     try:
         append_footer(page_id, source_url, date_str)
     except Exception as e:
