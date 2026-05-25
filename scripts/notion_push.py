@@ -147,7 +147,7 @@ def main():
             append_image_block(page_id, upload_id)
             print(f"      [{i+1}/{len(images)}] {img_path.name} uploaded")
             if i < len(images) - 1:
-                time.sleep(0.4)
+                time.sleep(0.7)
         except Exception as e:
             print(f"      [{i+1}/{len(images)}] FAILED: {img_path.name} — {e}")
 
