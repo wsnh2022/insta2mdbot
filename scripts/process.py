@@ -79,22 +79,31 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
     body = {
         "model": PRIMARY_MODEL,
         "messages": [{"role": "user", "content": content}],
-        "max_tokens": 300,
+        "max_tokens": 800,
     }
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers, json=body, timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if "error" in data:
-        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-    raw = data["choices"][0]["message"]["content"].strip()
-    if "```" in raw:
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
+    retry_delays = [10, 30, 60]
+    for attempt, delay in enumerate(retry_delays + [None]):
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers, json=body, timeout=60,
+        )
+        if resp.status_code == 429:
+            if delay is not None:
+                print(f"      Rate limited (429). Retrying in {delay}s... (attempt {attempt + 1}/{len(retry_delays)})")
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"Rate limited after {len(retry_delays)} retries.")
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
+        raw = data["choices"][0]["message"]["content"].strip()
+        if "```" in raw:
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw.strip())
+    raise RuntimeError("get_metadata_and_summary_from_images: exhausted retries")
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
