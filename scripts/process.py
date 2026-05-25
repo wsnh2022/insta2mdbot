@@ -304,6 +304,10 @@ def process_instagram():
     processed_log = NOTES_DIR / "_processed.txt"
 
     if not EXTRACT_TEXT:
+        if processed_log.exists() and shortcode in processed_log.read_text(encoding="utf-8").splitlines():
+            Path("/tmp/is_duplicate").write_text("1", encoding="utf-8")
+            print(f"[SKIP] Already processed: {shortcode}")
+            sys.exit(0)
         print(f"[MODE] images only — skipping text extraction")
         print(f"[1/3] Downloading: {INSTAGRAM_URL}")
         try:
