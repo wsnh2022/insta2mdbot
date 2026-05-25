@@ -44,6 +44,8 @@ def create_page(title, tags, summary, source_url, date_str):
         json=payload,
         timeout=30,
     )
+    if not resp.ok:
+        print(f"      Notion error {resp.status_code}: {resp.text}")
     resp.raise_for_status()
     return resp.json()["id"]
 
