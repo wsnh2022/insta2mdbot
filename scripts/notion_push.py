@@ -34,7 +34,7 @@ def create_page(title, tags, summary, source_url, date_str):
             "Name": {"title": [{"text": {"content": title}}]},
             "Source": {"url": source_url or None},
             "Tags": {"multi_select": [{"name": t} for t in tags]},
-            "date": {"date": {"start": date_str}},
+            "Date": {"date": {"start": date_str}},
             "Summary": {"rich_text": [{"text": {"content": summary}}]},
         },
     }
