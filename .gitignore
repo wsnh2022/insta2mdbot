@@ -12,3 +12,4 @@ deploy-log.txt
 .gitsync.lock
 shortcodes.txt
 backfill_log.txt
+run_backfill.ps1
