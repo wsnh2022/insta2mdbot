@@ -338,6 +338,7 @@ def process_instagram():
 
     if processed_log.exists():
         if shortcode in processed_log.read_text(encoding="utf-8").splitlines():
+            Path("/tmp/is_duplicate").write_text("1", encoding="utf-8")
             print(f"[NOTION] Already processed: {shortcode} — re-downloading for Notion push only")
             try:
                 images = download_carousel(INSTAGRAM_URL, tmp_dir)

@@ -66,6 +66,17 @@ jobs:
           EXTRACT_TEXT: ${{ inputs.extract_text }}
         run: python scripts/process.py
 
+      - name: Check duplicate status
+        if: always()
+        run: |
+          if [ -f /tmp/is_duplicate ]; then
+            echo "IS_DUPLICATE=true" >> $GITHUB_ENV
+          fi
+
+      - name: Duplicate detected
+        if: ${{ env.IS_DUPLICATE == 'true' }}
+        run: echo "Post was already processed — Notion page exists"
+
       - name: Push to Notion
         if: ${{ inputs.push_to_notion == true || inputs.push_to_notion == 'true' }}
         env:

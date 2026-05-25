@@ -270,7 +270,11 @@ async function pollStatus(passphrase) {
         const data = await resp.json();
         if (data.status === "completed") {
           if (data.conclusion === "success") {
-            showStatus("Done! Your note is saved.", "success");
+            if (data.duplicate) {
+              showStatus("Already saved — this post was processed before.", "success");
+            } else {
+              showStatus("Done! Your note is saved.", "success");
+            }
           } else {
             showStatus("Processing failed. Try submitting again.", "error");
           }

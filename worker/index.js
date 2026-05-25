@@ -78,10 +78,30 @@ export default {
       if (!run) {
         return jsonResponse({ status: "none", message: "No runs found." }, 200, corsOrigin);
       }
+      let duplicate = false;
+      if (run.status === "completed" && run.conclusion === "success") {
+        try {
+          const jobsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/runs/${run.id}/jobs`;
+          const jobsResp = await fetch(jobsUrl, {
+            headers: {
+              "Authorization": `token ${env.GITHUB_PAT}`,
+              "Accept": "application/vnd.github.v3+json",
+              "User-Agent": "instatomdnotes-worker",
+            },
+          });
+          if (jobsResp.ok) {
+            const jobsData = await jobsResp.json();
+            const steps = jobsData.jobs?.[0]?.steps || [];
+            const dupStep = steps.find(s => s.name === "Duplicate detected");
+            duplicate = dupStep?.conclusion === "success";
+          }
+        } catch (_) {}
+      }
       return jsonResponse({
         status: run.status,
         conclusion: run.conclusion,
         run_id: run.id,
+        duplicate,
       }, 200, corsOrigin);
     }
 
