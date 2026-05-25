@@ -9,4 +9,6 @@ node_modules/
 ahk/passphrase.txt
 gitsync.bat 
 deploy-log.txt 
-.gitsync.lock 
+.gitsync.lock
+shortcodes.txt
+backfill_log.txt
