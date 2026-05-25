@@ -135,11 +135,16 @@ def get_existing_page(source_url: str):
     return page_id, has_summary
 
 
-def patch_summary(page_id: str, summary: str):
-    notion_patch(
-        f"https://api.notion.com/v1/pages/{page_id}",
-        json={"properties": {"Summary": {"rich_text": [{"text": {"content": summary[:2000]}}]}}},
-    )
+def patch_properties(page_id: str, title: str, tags: list, summary: str):
+    props = {}
+    if title:
+        props["Name"] = {"title": [{"text": {"content": title}}]}
+    if tags:
+        props["Tags"] = {"multi_select": [{"name": t} for t in tags]}
+    if summary:
+        props["Summary"] = {"rich_text": [{"text": {"content": summary[:2000]}}]}
+    if props:
+        notion_patch(f"https://api.notion.com/v1/pages/{page_id}", json={"properties": props})
 
 
 def load_metadata():
@@ -339,12 +344,15 @@ def main():
     if source_url:
         existing_id, has_summary = get_existing_page(source_url)
         if existing_id:
-            if has_summary or not summary:
-                print(f"[SKIP] Notion page already exists for {source_url}")
+            if has_summary and title == "Untitled":
+                print(f"[SKIP] Notion page already exists with complete metadata for {source_url}")
                 sys.exit(0)
-            print(f"[UPDATE] Page exists but Summary is empty — patching: {existing_id}")
-            patch_summary(existing_id, summary)
-            print(f"[DONE] Summary patched on existing page.")
+            if not title or title == source_url.rstrip("/").split("/")[-1]:
+                print(f"[SKIP] AI metadata unavailable — nothing to update for {source_url}")
+                sys.exit(0)
+            print(f"[UPDATE] Patching title, tags and summary on existing page: {existing_id}")
+            patch_properties(existing_id, title, tags, summary)
+            print(f"[DONE] Page properties updated.")
             sys.exit(0)
 
     print(f"[1/4] Creating Notion page: {title}")

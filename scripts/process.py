@@ -63,7 +63,7 @@ Return only valid JSON. No explanation, no markdown code block."""
 
 
 def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
-    """Single vision AI call: returns title, tags, and summary directly from images."""
+    """Single vision AI call across fallback models: returns title, tags, and summary from images."""
     content = []
     for img_path in images:
         content.append({
@@ -76,35 +76,44 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/instatomdnotes",
     }
-    body = {
-        "model": PRIMARY_MODEL,
-        "messages": [{"role": "user", "content": content}],
-        "max_tokens": 800,
-    }
-    retry_delays = [10, 30, 60]
-    for attempt, delay in enumerate(retry_delays + [None]):
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers, json=body, timeout=60,
-        )
-        if resp.status_code == 429:
-            if delay is not None:
-                print(f"      Rate limited (429). Retrying in {delay}s... (attempt {attempt + 1}/{len(retry_delays)})")
-                time.sleep(delay)
-                continue
-            raise RuntimeError(f"Rate limited after {len(retry_delays)} retries.")
-        resp.raise_for_status()
-        data = resp.json()
-        if "error" in data:
-            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-        raw = data["choices"][0]["message"]["content"].strip()
-        # Extract JSON object robustly — handles preamble/postamble text
-        start = raw.find('{')
-        end = raw.rfind('}')
-        if start == -1 or end == -1:
-            raise RuntimeError(f"No JSON object found in response: {raw[:200]}")
-        return json.loads(raw[start:end + 1])
-    raise RuntimeError("get_metadata_and_summary_from_images: exhausted retries")
+    for model in MODELS:
+        body = {
+            "model": model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": 800,
+        }
+        retry_delays = [10, 30]
+        for attempt, delay in enumerate(retry_delays + [None]):
+            try:
+                resp = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers, json=body, timeout=60,
+                )
+                if resp.status_code == 429:
+                    if delay is not None:
+                        print(f"      {model} rate limited. Retrying in {delay}s...")
+                        time.sleep(delay)
+                        continue
+                    print(f"      {model} rate limited after retries. Trying next model...")
+                    break
+                resp.raise_for_status()
+                data = resp.json()
+                if "error" in data:
+                    print(f"      {model} error: {data['error'].get('message', data['error'])}. Trying next model...")
+                    break
+                raw = data["choices"][0]["message"]["content"].strip()
+                start = raw.find('{')
+                end = raw.rfind('}')
+                if start == -1 or end == -1:
+                    print(f"      {model} returned no JSON. Trying next model...")
+                    break
+                result = json.loads(raw[start:end + 1])
+                print(f"      {model} succeeded.")
+                return result
+            except Exception as err:
+                print(f"      {model} failed: {err}. Trying next model...")
+                break
+    raise RuntimeError("All models failed for image metadata extraction.")
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
