@@ -94,10 +94,13 @@ def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
 
 
 def resize_image(path: Path, max_px: int = 768) -> Path:
+    resized_dir = Path("/tmp/insta_resized")
+    resized_dir.mkdir(exist_ok=True)
+    out = resized_dir / path.name
     img = Image.open(path)
     img.thumbnail((max_px, max_px), Image.LANCZOS)
-    img.save(path, "JPEG", quality=85)
-    return path
+    img.save(out, "JPEG", quality=85)
+    return out
 
 
 def encode_image(path: Path) -> str:
