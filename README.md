@@ -215,13 +215,13 @@ The weakest point in the stack. A 403 from Instagram means that run fails - just
 
 ---
 
-## Optional: Notion push
+## Notion push
 
-Instagram carousels can also be pushed to a Notion database alongside the existing markdown flow. The markdown note is always saved first - Notion push is additive and opt-in per run.
+Every Instagram carousel is automatically pushed to a Notion database alongside the existing markdown flow. The markdown note is always saved first. Notion push runs immediately after for every Instagram submission.
 
 ### What gets created
 
-Each carousel becomes one row in a Notion database with these properties: title, source URL, tags, date, and summary. Opening the page shows all slide images in order.
+Each carousel becomes one searchable row in a Notion database with title, source URL, tags, date, and summary as properties. Opening the page shows all slide images in order.
 
 ### Setup
 
@@ -240,13 +240,9 @@ Each carousel becomes one row in a Notion database with these properties: title,
 4. Copy the database ID from the URL (32-char string before the `?v=`).
 5. Add two GitHub Actions secrets to this repo: `NOTION_TOKEN` and `NOTION_DATABASE_ID`.
 
-### Triggering
+Once set up, no further action needed. Every Instagram submission from the website or AHK hotkey pushes to both GitHub notes and Notion automatically.
 
-Notion push is manual-only via GitHub Actions UI. The frontend, AHK, and Worker are unaffected.
-
-Go to Actions > Process Instagram Post > Run workflow, select your branch, paste an Instagram URL, and tick **Push carousel to Notion database**.
-
-Optionally fill **Override the AI-generated title in Notion** to use a custom title instead of the AI-generated one.
+To use a custom title instead of the AI-generated one, trigger the workflow manually from GitHub Actions UI and fill the **Override the AI-generated title in Notion** input.
 
 ---
 
