@@ -76,7 +76,7 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/instatomdnotes",
     }
-    for model in MODELS:
+    for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
         body = {
             "model": model,
             "messages": [{"role": "user", "content": content}],
@@ -101,13 +101,19 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
                 if "error" in data:
                     print(f"      {model} error: {data['error'].get('message', data['error'])}. Trying next model...")
                     break
-                raw = data["choices"][0]["message"]["content"].strip()
+                raw = data["choices"][0]["message"].get("content")
+                if raw is None:
+                    print(f"      {model} returned null content. Trying next model...")
+                    break
+                raw = raw.strip()
                 start = raw.find('{')
                 end = raw.rfind('}')
                 if start == -1 or end == -1:
                     print(f"      {model} returned no JSON. Trying next model...")
                     break
-                result = json.loads(raw[start:end + 1])
+                # Fix trailing commas before } or ] which some models produce
+                clean = re.sub(r',(\s*[}\]])', r'\1', raw[start:end + 1])
+                result = json.loads(clean)
                 print(f"      {model} succeeded.")
                 return result
             except Exception as err:
