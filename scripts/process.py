@@ -244,14 +244,19 @@ def process_instagram():
                 print(f"      Re-download failed: {e} — skipping Notion push")
                 sys.exit(0)
             existing_md = None
+            found_path = None
             for md_path in NOTES_DIR.glob("**/*.md"):
                 text = md_path.read_text(encoding="utf-8")
                 if shortcode in text or INSTAGRAM_URL in text:
                     existing_md = text
+                    found_path = md_path
                     break
             title, tags, summary, extracted = shortcode, [], "", ""
             if existing_md:
+                print(f"      Found existing note: {found_path}")
+                existing_md = existing_md.replace('\r\n', '\n')
                 parts = existing_md.split("---", 2)
+                print(f"      Split parts: {len(parts)}")
                 if len(parts) >= 3:
                     fm = parts[1]
                     tm = re.search(r'title:\s*"?(.+?)"?\s*$', fm, re.MULTILINE)
@@ -261,7 +266,12 @@ def process_instagram():
                     sm = re.search(r'>\s*\[!summary\]\n((?:>.*\n?)+)', body)
                     if sm:
                         summary = " ".join(re.findall(r'^>\s*(.+)$', sm.group(1), re.MULTILINE)).strip()
+                        print(f"      Summary found: {summary[:80]}...")
+                    else:
+                        print(f"      No summary block found in note body (first 100 chars: {repr(body[:100])})")
                     extracted = re.sub(r'>\s*\[!summary\]\n(?:>.*\n?)+', '', body).strip()
+            else:
+                print(f"      No existing .md found for shortcode {shortcode} — metadata will be sparse")
             Path("/tmp/metadata.json").write_text(
                 json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
                 encoding="utf-8",
