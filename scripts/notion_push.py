@@ -51,16 +51,49 @@ def notion_patch(url, **kwargs):
     raise RuntimeError("notion_patch: exhausted retries")
 
 
+NOTION_LANGUAGES = {
+    "python", "javascript", "typescript", "java", "c", "c++", "c#", "go", "rust",
+    "bash", "shell", "sql", "html", "css", "json", "yaml", "markdown", "php",
+    "ruby", "swift", "kotlin", "scala", "r", "matlab", "powershell", "docker",
+    "graphql", "xml", "scss", "sass", "less",
+}
+
+
 def markdown_to_blocks(text: str) -> list:
     blocks = []
-    for line in text.splitlines():
-        line = line.rstrip()
-        if not line or line.startswith("---"):
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+
+        # Fenced code block — collect until closing ```
+        if line.startswith("```"):
+            lang = line[3:].strip().lower() or "plain text"
+            if lang not in NOTION_LANGUAGES:
+                lang = "plain text"
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].rstrip().startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            blocks.append({
+                "type": "code",
+                "code": {
+                    "rich_text": [{"type": "text", "text": {"content": "\n".join(code_lines)[:2000]}}],
+                    "language": lang,
+                },
+            })
+            i += 1
             continue
-        # Strip bold/italic markers so they don't show as literal ** in Notion
+
+        if not line or line.startswith("---"):
+            i += 1
+            continue
+
+        # Strip bold/italic markers
         line = re.sub(r'\*\*(.+?)\*\*', r'\1', line)
         line = re.sub(r'\*(.+?)\*', r'\1', line)
-        content = line[:2000]
+
         if line.startswith("### "):
             blocks.append({"type": "heading_3", "heading_3": {"rich_text": [{"type": "text", "text": {"content": line[4:].strip()}}]}})
         elif line.startswith("## "):
@@ -70,7 +103,9 @@ def markdown_to_blocks(text: str) -> list:
         elif line.startswith("- ") or line.startswith("* "):
             blocks.append({"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": [{"type": "text", "text": {"content": line[2:]}}]}})
         else:
-            blocks.append({"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": content}}]}})
+            blocks.append({"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": line[:2000]}}]}})
+
+        i += 1
     return blocks
 
 

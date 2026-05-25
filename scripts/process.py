@@ -32,6 +32,7 @@ Rules:
 - Remove EVERYTHING promotional: @handles, slide counters like (01/09), "Presented by", "Follow for more", "Save this", (save for later), calls to action, branding watermarks
 - Remove repetitive recap slides that only restate what was already covered
 - If a slide has no meaningful text (pure graphic/image), output nothing for it
+- If a slide contains code (any programming language, terminal commands, config snippets), wrap it in a fenced code block with the correct language tag (e.g. ```python, ```bash, ```sql). Preserve indentation exactly.
 - Do NOT summarize. Extract and clean only.
 - Output plain markdown only — no commentary, no preamble"""
 
