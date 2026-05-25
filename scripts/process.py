@@ -300,6 +300,11 @@ def process_instagram():
         f.write(shortcode + "\n")
     print(f"[5/5] Saved: {note_path}")
 
+    Path("/tmp/metadata.json").write_text(
+        json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL}),
+        encoding="utf-8",
+    )
+
 
 TEXT_METADATA_PROMPT = """Given this text content, return a JSON object with exactly two keys:
 - "title": a concise 5-8 word title describing the core topic (title case, no hashtags)

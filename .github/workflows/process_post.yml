@@ -16,6 +16,15 @@ on:
         description: 'Raw content: URLs or text body (mode=urls or mode=text)'
         required: false
         type: string
+      push_to_notion:
+        description: 'Push carousel to Notion database (mode=instagram only)'
+        required: false
+        type: boolean
+        default: false
+      notion_title_override:
+        description: 'Override the AI-generated title in Notion (optional)'
+        required: false
+        type: string
 
 jobs:
   process:
@@ -50,6 +59,14 @@ jobs:
           MODE: ${{ inputs.mode }}
           CONTENT: ${{ inputs.content }}
         run: python scripts/process.py
+
+      - name: Push to Notion
+        if: ${{ inputs.push_to_notion == true }}
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_TITLE_OVERRIDE: ${{ inputs.notion_title_override }}
+        run: python scripts/notion_push.py
 
       - name: Commit and push notes
         run: |
