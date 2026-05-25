@@ -61,7 +61,7 @@ jobs:
         run: python scripts/process.py
 
       - name: Push to Notion
-        if: ${{ inputs.push_to_notion == true }}
+        if: ${{ inputs.push_to_notion == true || inputs.push_to_notion == 'true' }}
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}

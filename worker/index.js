@@ -111,7 +111,7 @@ export default {
       return jsonResponse({ error: "Invalid JSON body" }, 400, corsOrigin);
     }
 
-    const { instagram_url, mode, content } = body;
+    const { instagram_url, mode, content, push_to_notion } = body;
 
     let workflowInputs;
 
@@ -121,7 +121,11 @@ export default {
         return jsonResponse({ error: "Invalid Instagram URL" }, 400, corsOrigin);
       }
       const cleanUrl = `https://www.instagram.com/p/${shortcodeMatch[1]}/`;
-      workflowInputs = { mode: "instagram", instagram_url: cleanUrl };
+      workflowInputs = {
+        mode: "instagram",
+        instagram_url: cleanUrl,
+        push_to_notion: push_to_notion === true ? "true" : "false",
+      };
 
     } else if (mode === "urls" || mode === "text") {
       if (typeof content !== "string" || content.trim().length === 0) {

@@ -4,7 +4,13 @@ const BATCH_DELAY_MS = 30000;
 function updateModeBadge() {
   const raw = document.getElementById("urls").value.trim();
   const badge = document.getElementById("mode-badge");
-  if (!raw) { badge.className = "mode-badge hidden"; return; }
+  const notionGroup = document.getElementById("notion-toggle-group");
+
+  if (!raw) {
+    badge.className = "mode-badge hidden";
+    notionGroup.classList.add("hidden");
+    return;
+  }
 
   const { mode, lines } = detectMode(raw);
   const count = lines.length;
@@ -15,14 +21,19 @@ function updateModeBadge() {
       ? "📸 Instagram carousel → note"
       : `📸 ${igCount} Instagram URLs → ${igCount} notes (batch)`;
     badge.className = "mode-badge mode-ig";
+    notionGroup.classList.remove("hidden");
   } else if (mode === "urls") {
     badge.textContent = count === 1
       ? "🔗 Plain URL → reading list"
       : `🔗 ${count} URLs → reading list`;
     badge.className = "mode-badge mode-url";
+    notionGroup.classList.add("hidden");
+    document.getElementById("push-to-notion").checked = false;
   } else {
     badge.textContent = "✏️ Raw text → AI-generated note";
     badge.className = "mode-badge mode-text";
+    notionGroup.classList.add("hidden");
+    document.getElementById("push-to-notion").checked = false;
   }
 }
 
@@ -132,11 +143,12 @@ form.addEventListener("submit", async (e) => {
 
 async function submitSingle(url, passphrase) {
   btn.textContent = "Submitting...";
+  const pushToNotion = document.getElementById("push-to-notion").checked;
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Access-Key": passphrase },
-      body: JSON.stringify({ instagram_url: url }),
+      body: JSON.stringify({ instagram_url: url, push_to_notion: pushToNotion }),
     });
     const data = await resp.json();
     if (resp.ok && data.status === "triggered") {
@@ -157,6 +169,7 @@ async function submitSingle(url, passphrase) {
 
 async function submitBatch(urls, passphrase) {
   let failed = 0;
+  const pushToNotion = document.getElementById("push-to-notion").checked;
 
   for (let i = 0; i < urls.length; i++) {
     btn.textContent = `Submitting ${i + 1}/${urls.length}...`;
@@ -164,7 +177,7 @@ async function submitBatch(urls, passphrase) {
       const resp = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Access-Key": passphrase },
-        body: JSON.stringify({ instagram_url: urls[i] }),
+        body: JSON.stringify({ instagram_url: urls[i], push_to_notion: pushToNotion }),
       });
       if (resp.status === 401) {
         showStatus("Wrong passphrase.", "error");
