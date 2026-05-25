@@ -67,14 +67,17 @@ jobs:
         run: python scripts/process.py
 
       - name: Check duplicate status
+        id: check_dup
         if: always()
         run: |
           if [ -f /tmp/is_duplicate ]; then
-            echo "IS_DUPLICATE=true" >> $GITHUB_ENV
+            echo "is_duplicate=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_duplicate=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Duplicate detected
-        if: ${{ env.IS_DUPLICATE == 'true' }}
+        if: ${{ steps.check_dup.outputs.is_duplicate == 'true' }}
         run: echo "Post was already processed — Notion page exists"
 
       - name: Push to Notion
