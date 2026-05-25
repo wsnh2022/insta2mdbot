@@ -326,6 +326,9 @@ def process_instagram():
             print(f"      Done: {title}")
         except Exception as e:
             print(f"      AI call failed: {e} — using shortcode as title")
+        NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        with open(processed_log, "a", encoding="utf-8") as f:
+            f.write(shortcode + "\n")
         print(f"[3/3] Writing metadata for Notion...")
         Path("/tmp/metadata.json").write_text(
             json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": ""}),
