@@ -129,7 +129,7 @@ form.addEventListener("submit", async (e) => {
       showStatus("Max 10 Instagram URLs at once. Please remove some and try again.", "error");
       btn.disabled = false; return;
     }
-    if (igUrls.length === 1) { await submitSingle(igUrls[0], passphrase); }
+    if (igUrls.length === 1) { await submitSingle(igUrls[0], passphrase, igUrls[0]); }
     else { await submitBatch(igUrls, passphrase); }
   } else if (mode === "urls") {
     if (lines.length > 10) {
@@ -149,7 +149,7 @@ form.addEventListener("submit", async (e) => {
   btn.textContent = "Convert";
 });
 
-async function submitSingle(url, passphrase) {
+async function submitSingle(url, passphrase, submittedUrl) {
   const extractText = document.getElementById("extract-text-toggle").checked;
   btn.textContent = "Submitting...";
   try {
@@ -162,7 +162,7 @@ async function submitSingle(url, passphrase) {
     if (resp.ok && data.status === "triggered") {
       showStatus("Processing carousel... checking status in 20s.", "success");
       document.getElementById("urls").value = ""; updateModeBadge();
-      pollStatus(passphrase);
+      pollStatus(passphrase, submittedUrl);
     } else if (resp.status === 401) {
       showStatus("Wrong passphrase.", "error");
     } else if (resp.status === 429) {
@@ -252,7 +252,7 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-async function pollStatus(passphrase) {
+async function pollStatus(passphrase, submittedUrl) {
   const deadline = Date.now() + 8 * 60 * 1000;
   await sleep(20000);
 
@@ -271,7 +271,8 @@ async function pollStatus(passphrase) {
         if (data.status === "completed") {
           if (data.conclusion === "success") {
             if (data.duplicate) {
-              showStatus("Already saved — this post was processed before.", "success");
+              const shortcode = submittedUrl ? submittedUrl.split("/p/")[1]?.replace(/\/$/, "") : "";
+              showStatus(`Already saved — ${shortcode || "this post"} was processed before.`, "success");
             } else {
               showStatus("Done! Your note is saved.", "success");
             }
