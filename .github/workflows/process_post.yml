@@ -17,7 +17,7 @@ on:
         required: false
         type: string
       push_to_notion:
-        description: 'Push carousel to Notion database (mode=instagram only)'
+        description: 'Push to Notion (instagram: carousel DB, urls: reading list, text: text notes DB)'
         required: false
         type: boolean
         default: true
@@ -65,6 +65,8 @@ jobs:
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          NOTION_READING_LIST_DB_ID: ${{ secrets.NOTION_READING_LIST_DB_ID }}
+          NOTION_TEXT_NOTES_DB_ID: ${{ secrets.NOTION_TEXT_NOTES_DB_ID }}
           NOTION_TITLE_OVERRIDE: ${{ inputs.notion_title_override }}
         run: python scripts/notion_push.py
 

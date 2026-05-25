@@ -4,6 +4,7 @@ import re
 import time
 import base64
 import json
+import urllib.request
 import requests
 import instaloader
 from pathlib import Path
@@ -264,7 +265,7 @@ def process_instagram():
                         summary = " ".join(re.findall(r'^>\s*(.+)$', sm.group(1), re.MULTILINE)).strip()
                     extracted = re.sub(r'>\s*\[!summary\]\n(?:>.*\n?)+', '', body).strip()
             Path("/tmp/metadata.json").write_text(
-                json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
+                json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
                 encoding="utf-8",
             )
             sys.exit(0)
@@ -336,7 +337,7 @@ def process_instagram():
     print(f"[5/5] Saved: {note_path}")
 
     Path("/tmp/metadata.json").write_text(
-        json.dumps({"title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
+        json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
         encoding="utf-8",
     )
 
@@ -369,6 +370,18 @@ def extract_urls_from_text(text: str) -> list[str]:
     return result
 
 
+def fetch_title(url: str) -> str:
+    """Fetch the <title> tag from a URL. Falls back to the raw URL on any error."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            html = resp.read(8192).decode("utf-8", errors="ignore")
+        m = re.search(r'<title[^>]*>([^<]+)</title>', html, re.IGNORECASE)
+        return m.group(1).strip() if m else url
+    except Exception:
+        return url
+
+
 def process_urls():
     lines = [l.strip() for l in CONTENT.splitlines() if l.strip()]
     urls = [l for l in lines if re.match(r'^https?://', l)]
@@ -387,6 +400,12 @@ def process_urls():
     else:
         pending_path.write_text("# Pending to Read\n\n" + new_items + "\n", encoding="utf-8")
     print(f"[DONE] Appended {len(urls)} URL(s) to {pending_path}")
+    print(f"      Fetching page titles for Notion...")
+    url_entries = [{"url": u, "title": fetch_title(u)} for u in urls]
+    Path("/tmp/metadata.json").write_text(
+        json.dumps({"mode": "urls", "urls": url_entries}),
+        encoding="utf-8",
+    )
 
 
 def process_text():
@@ -459,6 +478,10 @@ def process_text():
     note_path.parent.mkdir(parents=True, exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
     print(f"[4/4] Saved: {note_path}")
+    Path("/tmp/metadata.json").write_text(
+        json.dumps({"mode": "text", "title": title, "tags": tags, "summary": summary, "extracted": note_body}),
+        encoding="utf-8",
+    )
 
 
 def main():

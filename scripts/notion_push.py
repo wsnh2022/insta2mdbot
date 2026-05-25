@@ -9,6 +9,8 @@ from datetime import datetime
 
 NOTION_TOKEN = os.environ["NOTION_TOKEN"]
 NOTION_DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
+NOTION_READING_LIST_DB_ID = os.environ.get("NOTION_READING_LIST_DB_ID", "").strip()
+NOTION_TEXT_NOTES_DB_ID = os.environ.get("NOTION_TEXT_NOTES_DB_ID", "").strip()
 NOTION_TITLE_OVERRIDE = os.environ.get("NOTION_TITLE_OVERRIDE", "").strip()
 METADATA_PATH = Path("/tmp/metadata.json")
 IMAGES_DIR = Path("/tmp/insta_download")
@@ -240,15 +242,98 @@ def write_summary(title, page_url, image_count):
         f.write(f"- **Images uploaded:** {image_count}\n")
 
 
+def handle_urls(url_entries: list, date_str: str):
+    if not NOTION_READING_LIST_DB_ID:
+        print("[SKIP] NOTION_READING_LIST_DB_ID not set. Skipping reading list push.")
+        return
+    print(f"[1/1] Adding {len(url_entries)} URL(s) to Notion reading list...")
+    for i, entry in enumerate(url_entries):
+        url = entry.get("url", "")
+        title = entry.get("title") or url
+        payload = {
+            "parent": {"database_id": NOTION_READING_LIST_DB_ID},
+            "properties": {
+                "Name": {"title": [{"text": {"content": title[:2000]}}]},
+                "URL": {"url": url or None},
+                "Status": {"select": {"name": "Unread"}},
+                "Date": {"date": {"start": date_str}},
+            },
+        }
+        try:
+            notion_post("https://api.notion.com/v1/pages", json=payload)
+            print(f"      [{i+1}/{len(url_entries)}] Added: {title[:80]}")
+        except Exception as e:
+            print(f"      [{i+1}/{len(url_entries)}] Failed: {url} — {e}")
+    print(f"[DONE] Reading list updated.")
+
+
+def handle_text(title: str, tags: list, summary: str, extracted: str, date_str: str):
+    if not NOTION_TEXT_NOTES_DB_ID:
+        print("[SKIP] NOTION_TEXT_NOTES_DB_ID not set. Skipping text note push.")
+        return
+    print(f"[1/3] Creating text note in Notion: {title}")
+    payload = {
+        "parent": {"database_id": NOTION_TEXT_NOTES_DB_ID},
+        "properties": {
+            "Name": {"title": [{"text": {"content": title}}]},
+            "Tags": {"multi_select": [{"name": t} for t in tags]},
+            "Date": {"date": {"start": date_str}},
+            "Summary": {"rich_text": [{"text": {"content": summary[:2000]}}]},
+        },
+    }
+    resp = notion_post("https://api.notion.com/v1/pages", json=payload)
+    page_id = resp.json()["id"]
+    print(f"      Page created: {page_id}")
+    if extracted:
+        print(f"[2/3] Appending content blocks...")
+        try:
+            blocks = markdown_to_blocks(extracted)
+            append_blocks_batched(page_id, blocks)
+            print(f"      {len(blocks)} block(s) appended")
+        except Exception as e:
+            print(f"      Content blocks failed (non-fatal): {e}")
+    print(f"[3/3] Appending footer...")
+    try:
+        notion_patch(
+            f"https://api.notion.com/v1/blocks/{page_id}/children",
+            json={"children": [
+                {"type": "divider", "divider": {}},
+                {"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": f"Processed: {date_str}"}}]}},
+            ]},
+        )
+    except Exception as e:
+        print(f"      Footer failed (non-fatal): {e}")
+    page_url = f"https://notion.so/{page_id.replace('-', '')}"
+    print(f"[DONE] {page_url}")
+
+
 def main():
     metadata = load_metadata()
+    mode = metadata.get("mode", "instagram")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+
+    if mode == "urls":
+        url_entries = metadata.get("urls", [])
+        if not url_entries:
+            print("[SKIP] No URLs in metadata. Skipping.")
+            sys.exit(0)
+        handle_urls(url_entries, date_str)
+        sys.exit(0)
+
+    if mode == "text":
+        title = NOTION_TITLE_OVERRIDE or metadata.get("title", "Untitled")
+        tags = metadata.get("tags", [])
+        summary = metadata.get("summary", "")
+        extracted = metadata.get("extracted", "")
+        handle_text(title, tags, summary, extracted, date_str)
+        sys.exit(0)
+
+    # instagram mode
     title = NOTION_TITLE_OVERRIDE or metadata.get("title", "Untitled")
     tags = metadata.get("tags", [])
     summary = metadata.get("summary", "")
     source_url = metadata.get("url", "")
     extracted = metadata.get("extracted", "")
-    date_str = datetime.now().strftime("%Y-%m-%d")
-
     images = sorted(IMAGES_DIR.glob("*.jpg")) if IMAGES_DIR.exists() else []
 
     if source_url:
