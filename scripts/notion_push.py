@@ -117,6 +117,14 @@ def append_blocks_batched(page_id: str, blocks: list):
         )
 
 
+def page_exists(source_url: str) -> bool:
+    resp = notion_post(
+        f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query",
+        json={"filter": {"property": "Source", "url": {"equals": source_url}}, "page_size": 1},
+    )
+    return len(resp.json().get("results", [])) > 0
+
+
 def load_metadata():
     if not METADATA_PATH.exists():
         print("[SKIP] /tmp/metadata.json not found. Skipping Notion push.")
@@ -227,6 +235,10 @@ def main():
     date_str = datetime.now().strftime("%Y-%m-%d")
 
     images = sorted(IMAGES_DIR.glob("*.jpg")) if IMAGES_DIR.exists() else []
+
+    if source_url and page_exists(source_url):
+        print(f"[SKIP] Notion page already exists for {source_url}")
+        sys.exit(0)
 
     print(f"[1/4] Creating Notion page: {title}")
     page_id = create_page(title, tags, summary, source_url, date_str)
