@@ -1,0 +1,27 @@
+{
+  "name": "instatomdnotes",
+  "short_name": "InstaBot",
+  "description": "Convert Instagram carousels to Obsidian notes",
+  "start_url": "/insta2mdbot/",
+  "scope": "/insta2mdbot/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "cover.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/insta2mdbot/",
+    "method": "GET",
+    "params": {
+      "url": "url",
+      "text": "text",
+      "title": "title"
+    }
+  }
+}

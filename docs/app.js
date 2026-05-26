@@ -317,3 +317,33 @@ async function pollStatus(passphrase, submittedUrl) {
 
   check();
 }
+
+// PWA service worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/insta2mdbot/sw.js');
+}
+
+// Android Share Target — handle ?url= / ?text= injected by the OS share sheet
+(function handleShareTarget() {
+  const params = new URLSearchParams(window.location.search);
+  const shared = (params.get('url') || params.get('text') || '').trim();
+  if (!shared) return;
+
+  // Strip query params so a refresh doesn't re-trigger
+  history.replaceState(null, '', window.location.pathname);
+
+  const textarea = document.getElementById('urls');
+  textarea.value = shared;
+  updateModeBadge();
+
+  // Auto-submit only if passphrase is already saved — otherwise show pre-filled form
+  const passphrase = getPassphrase();
+  if (passphrase) {
+    showStatus('Shared URL detected — submitting...', 'success');
+    setTimeout(() => form.requestSubmit(), 800);
+  } else {
+    showStatus('URL pre-filled. Enter your passphrase and hit Convert.', 'success');
+    passphraseGroup.classList.remove('hidden');
+    passphraseInput.focus();
+  }
+}());
