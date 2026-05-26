@@ -88,6 +88,7 @@ GitHub Actions runner (ubuntu)
       ↓  sends all slides to OpenRouter vision model → extracted text
          (chain: Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL)
          (if all fail: retry full chain after 1 min, then 3 min)
+         [images-only mode: single combined call for title + tags + summary instead]
       ↓  second AI call → title + tags (JSON)
       ↓  third AI call → 2-3 sentence summary
       ↓  builds .md note with YAML frontmatter + summary callout
@@ -109,8 +110,8 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 | Image download | instaloader 4.15.1 (optional session login via `INSTAGRAM_SESSION_ID` secret) |
 | Image resize | Pillow 10.4.0 (768px max before API call) |
 | AI extraction | OpenRouter - Gemini 2.5 Flash Lite (primary) → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL (fallbacks) |
-| AI metadata | OpenRouter - title + tags (JSON) from extracted text |
-| AI summary | OpenRouter - 2-3 sentence plain-prose summary |
+| AI metadata | OpenRouter - title + tags (JSON) from extracted text; images-only mode uses same 3-model chain in a single combined call |
+| AI summary | OpenRouter - 2-3 sentence plain-prose summary (omitted in images-only mode, included in the combined call) |
 | Note format | YAML frontmatter + Obsidian `> [!summary]` callout, auto-routed to topic subfolder |
 | Duplicate guard | `notes/_processed.txt` - shortcode log, skips re-processing |
 | Note storage | Separate private GitHub repo |

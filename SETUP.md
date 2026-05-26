@@ -266,6 +266,18 @@ and add `NOTES_REPO_PAT`.
 
 ---
 
+### Images-only mode: AI call fails, note saves with shortcode as title
+
+Two known failure modes for the combined title/tags/summary call in images-only mode:
+
+1. **Gemini returns invalid JSON** - Gemini occasionally produces a response with a minor syntax error (e.g. a trailing comma inside a nested value). The script now applies regex field extraction as a fallback to recover `title`, `tags`, and `summary` individually before giving up.
+
+2. **Qwen returns null content** - Qwen 3.5 9B has built-in chain-of-thought thinking. When thinking is active, the model fills the entire `max_tokens` budget with reasoning tokens and returns no actual content. The script now passes `"reasoning": {"exclude": true}` to disable thinking for Qwen and DeepSeek models, and raises `max_tokens` to 1200 to give enough room for a full response.
+
+If all 3 models still fail, the note is saved with the shortcode as title and no tags/summary. Re-submit the post to try again.
+
+---
+
 ### High token usage on OpenRouter (~6,000+ tokens per image)
 instaloader downloads images at full Instagram resolution (1080px+). Vision models tokenize large images into many tiles, each costing ~170 tokens.
 
@@ -371,6 +383,8 @@ Generate at: **GitHub → Settings → Developer settings → Personal access to
     │    4. Send all slides to OpenRouter vision model
     │       (chain: Gemini 2.5 Flash Lite → Qwen 3.5 9B → NVIDIA Nemotron Nano 12B 2 VL)
     │       (if all fail: retry full chain after 1 min, then 3 min)
+    │       [images-only mode: skips text extraction; single combined call returns title + tags + summary]
+    │       [images-only: same 3-model chain, Qwen reasoning disabled to avoid null-content from thinking tokens]
     │    5. Second API call → get title + tags (JSON)
     │    6. Third API call → generate 2-3 sentence summary
     │    7. Build .md note with YAML frontmatter + summary callout
