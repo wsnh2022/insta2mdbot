@@ -40,6 +40,7 @@ Every note gets a title, tags, source link, and date, automatically.
 - If all three models fail, automatically retries the full chain after 1 min then 3 min before giving up
 - Runs in anonymous mode by default - no Instagram account risk. Session login available but not recommended (see Limitations)
 - AHK hotkey (`Alt+I`) - select any Instagram URL on screen, press the hotkey, triggers conversion with no browser needed. Uncomment line 80 of `ahk/insta_trigger.ahk` to activate it.
+- Android share sheet - install the PWA once via Chrome, then share any Instagram post directly to InstaBot from the Android share sheet. App opens a minimal popup, submits, and auto-closes in 3 seconds. No copy-pasting needed.
 
 **Output example:**
 
@@ -104,7 +105,7 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | GitHub Pages - vanilla HTML/CSS/JS |
+| Frontend | GitHub Pages - PWA (manifest + service worker + Web Share Target) |
 | API gateway | Cloudflare Worker (passphrase auth, rate limiting, status polling) |
 | Backend | GitHub Actions + Python 3.11 |
 | Image download | instaloader 4.15.1 (optional session login via `INSTAGRAM_SESSION_ID` secret) |
@@ -136,9 +137,11 @@ github.com/YOUR_USERNAME/YOUR_NOTES_REPO (private)
 
 ```
 insta2mdbot/
-├── docs/                        # GitHub Pages frontend
+├── docs/                        # GitHub Pages frontend (PWA)
 │   ├── index.html               # Form UI (passphrase + URL fields)
-│   ├── app.js                   # Submits to Worker with X-Access-Key header
+│   ├── app.js                   # Submits to Worker, handles Web Share Target
+│   ├── manifest.json            # PWA manifest - share target, display, icons
+│   ├── sw.js                    # Service worker - enables PWA install + share target
 │   └── style.css
 ├── worker/
 │   ├── index.js                 # Cloudflare Worker - auth, rate limit, URL clean, trigger

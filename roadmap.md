@@ -24,28 +24,28 @@ UI improvements shipped alongside:
 
 ---
 
-## Phase 2 - Next
+## Phase 2 - In Progress
 
-### Android One-Click Share
+### Android One-Click Share ✅ Shipped
 
-Share any Instagram post directly from the Android Instagram app to the bot - no browser, no copy-pasting.
+Share any Instagram post directly from the Android Instagram app to the bot — no browser, no copy-pasting.
 
-**How:** Android supports [Web Share Target API](https://web.dev/web-share-target/) - a PWA can register itself as a share destination. When the user hits "Share" in Instagram, the bot appears in the share sheet.
+**How it works:** The app is a PWA with Web Share Target. Install once via Chrome → it registers in the Android share sheet. Share any Instagram post → minimal popup appears → `Submitting...` → `✓ Queued` → auto-closes in 3 seconds.
 
-**What needs to be built:**
-- `docs/manifest.json` - PWA manifest declaring the app as a share target
-- `docs/sw.js` - minimal service worker (required for PWA install)
-- Worker handles incoming `share_target` POST (URL passed as query param)
-- `docs/index.html` - add PWA meta tags + manifest link
-- User installs the PWA to home screen once via Chrome → it registers as a share target
-
-**Files to create/modify:**
+**What was built:**
 | File | Change |
 |------|--------|
-| `docs/manifest.json` | New - PWA identity + `share_target` declaration |
-| `docs/sw.js` | New - minimal service worker for PWA install |
-| `docs/index.html` | Add `<link rel="manifest">` + theme meta tags |
-| `docs/app.js` | Handle `?url=` query param auto-fill on share |
+| `docs/manifest.json` | New - PWA identity + `share_target` (GET, `?url=` param) |
+| `docs/sw.js` | New - minimal pass-through service worker |
+| `docs/index.html` | Added manifest link + theme-color meta |
+| `docs/app.js` | Share target handler: detects `?url=`, hides form, shows popup card, auto-submits, auto-closes |
+
+**Key decisions made:**
+- GET method (not POST) — share_target must be same origin as PWA; Worker is a different origin
+- `localStorage` for passphrase (not `sessionStorage`) — persists across PWA sessions so share auto-submits
+- Extract-text preference saved to `localStorage` from the form toggle — share target reads it silently
+- `window.close()` after 3s on success — returns user to Instagram automatically
+- iOS not supported — Safari does not implement Web Share Target
 
 ---
 

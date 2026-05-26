@@ -204,6 +204,43 @@ An AutoHotkey v2 script lets you trigger a conversion without opening the browse
 
 ---
 
+## Android PWA Setup (Web Share Target)
+
+The app is a PWA (Progressive Web App). Once installed on Android, it appears in the system share sheet so you can share any Instagram post directly to the bot — no browser, no copy-pasting.
+
+### Install (one time)
+
+1. Open **Chrome** on Android
+2. Go to `wsnh2022.github.io/insta2mdbot`
+3. Tap the three-dot menu → **Add to Home screen** → **Install**
+4. Open the app from the home screen once (registers it as a share target with the OS)
+5. Enter your passphrase in the form — it is saved to `localStorage` and persists across sessions
+
+### Daily use
+
+1. Find any Instagram post in the Instagram app
+2. Tap **Share** → scroll the share sheet → tap **InstaBot**
+3. A small popup appears: `Submitting...` → `✓ Queued` → auto-closes in 3 seconds
+4. Note is ready in your notes repo in ~2 minutes
+
+The extract-text toggle preference (full note vs images-only) is saved from the form and used automatically on every share. Change it once on the form — all future shares follow that setting.
+
+### Reinstalling after an update
+
+If the app behaves unexpectedly after a code push:
+
+1. Long press the home screen icon → **Uninstall**
+2. Open Chrome → go to the site → tap three-dot menu → **Site settings** → **Clear & reset**
+3. Reinstall via Add to Home screen as above
+
+### Limitations
+
+- **Android Chrome only.** iOS Safari does not implement Web Share Target. iPhone users use the web form directly.
+- The popup cannot be a true OS popup — Android always opens the PWA in its registered display mode. The minimal card on a dark screen is the closest approximation.
+- `window.close()` after success works in most Android Chrome builds but may be blocked on some versions. If the app does not auto-close, swipe it away manually.
+
+---
+
 ## Common Errors and Fixes
 
 ### `ERROR: No matching distribution found for instaloader==1.9.7`
