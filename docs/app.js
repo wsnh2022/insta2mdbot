@@ -335,17 +335,28 @@ if ('serviceWorker' in navigator) {
   const passphrase = getPassphrase();
 
   if (passphrase) {
-    // Hide the form entirely — show a minimal processing screen instead
-    document.querySelector('.card-body').style.display = 'none';
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'padding:2rem;text-align:center;color:#e6edf3;font-size:1.1rem;';
-    overlay.innerHTML = '<div id="share-status">Submitting...</div>';
-    document.querySelector('.card').appendChild(overlay);
+    // Replace entire screen with a centered popup-style card
+    document.body.innerHTML = `
+      <div style="
+        position:fixed;inset:0;background:#0d1117;
+        display:flex;align-items:center;justify-content:center;
+        font-family:system-ui,sans-serif;
+      ">
+        <div style="
+          background:#161b22;border:1px solid #30363d;border-radius:14px;
+          padding:2rem 1.75rem;width:260px;text-align:center;
+        ">
+          <div style="font-size:2rem;margin-bottom:0.75rem;">📸</div>
+          <div style="color:#8b949e;font-size:0.8rem;margin-bottom:1rem;">instatomdnotes</div>
+          <div id="share-msg" style="color:#e6edf3;font-size:1rem;line-height:1.5;">Submitting...</div>
+          <div id="share-sub" style="color:#8b949e;font-size:0.75rem;margin-top:0.5rem;"></div>
+        </div>
+      </div>`;
 
-    const shareStatus = () => document.getElementById('share-status');
-
-    const textarea = document.getElementById('urls');
-    textarea.value = shared;
+    const setMsg = (msg, sub = '') => {
+      document.getElementById('share-msg').textContent = msg;
+      document.getElementById('share-sub').textContent = sub;
+    };
 
     fetch(WORKER_URL, {
       method: 'POST',
@@ -355,16 +366,18 @@ if ('serviceWorker' in navigator) {
       .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
         if (ok && data.status === 'triggered') {
-          shareStatus().textContent = '✓ Processing — check your notes in ~2 min.';
+          setMsg('✓ Queued', 'Note ready in ~2 min. You can close this.');
+          setTimeout(() => window.close(), 3000);
         } else if (ok && data.status === 'duplicate') {
-          shareStatus().textContent = `✓ Already saved (${data.shortcode}).`;
+          setMsg('✓ Already saved', `${data.shortcode} was processed before.`);
+          setTimeout(() => window.close(), 3000);
         } else if (status === 401) {
-          shareStatus().textContent = '✗ Wrong passphrase. Open the app to update it.';
+          setMsg('✗ Wrong passphrase', 'Open the app to update it.');
         } else {
-          shareStatus().textContent = `✗ ${data.error || 'Something went wrong.'}`;
+          setMsg('✗ Failed', data.error || 'Something went wrong.');
         }
       })
-      .catch(() => { shareStatus().textContent = '✗ Network error. Try again.'; });
+      .catch(() => setMsg('✗ Network error', 'Check your connection.'));
 
   } else {
     // No passphrase saved — show the form pre-filled so they can enter it
