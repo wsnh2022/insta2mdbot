@@ -62,6 +62,38 @@ IMAGE_ONLY_PROMPT = """Look at these carousel slides and return a JSON object wi
 Return only valid JSON. No explanation, no markdown code block."""
 
 
+def _repair_and_parse_json(raw: str) -> dict:
+    """Try progressively more aggressive repairs before giving up."""
+    start = raw.find('{')
+    end = raw.rfind('}')
+    if start == -1 or end == -1:
+        raise ValueError("No JSON object found in response")
+    chunk = raw[start:end + 1]
+    # Fix trailing commas
+    clean = re.sub(r',(\s*[}\]])', r'\1', chunk)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        pass
+    # Regex field extraction as last resort
+    result = {}
+    title_m = re.search(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+    tags_m = re.search(r'"tags"\s*:\s*\[([^\]]+)\]', clean)
+    summary_m = re.search(r'"summary"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+    if title_m:
+        result["title"] = title_m.group(1)
+    if tags_m:
+        try:
+            result["tags"] = json.loads(f"[{tags_m.group(1)}]")
+        except Exception:
+            result["tags"] = [t.strip().strip('"') for t in tags_m.group(1).split(',')]
+    if summary_m:
+        result["summary"] = summary_m.group(1)
+    if result:
+        return result
+    raise ValueError("Could not extract any fields from response")
+
+
 def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
     """Single vision AI call across fallback models: returns title, tags, and summary from images."""
     content = []
@@ -76,12 +108,15 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/instatomdnotes",
     }
-    for model in [PRIMARY_MODEL, FALLBACK_MODEL]:
+    for model in MODELS:
         body = {
             "model": model,
             "messages": [{"role": "user", "content": content}],
-            "max_tokens": 800,
+            "max_tokens": 1200,
         }
+        # Disable built-in reasoning/thinking to avoid wasting token budget on thinking output
+        if any(x in model for x in ("qwen", "deepseek")):
+            body["reasoning"] = {"exclude": True}
         retry_delays = [10, 30]
         for attempt, delay in enumerate(retry_delays + [None]):
             try:
@@ -101,21 +136,17 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
                 if "error" in data:
                     print(f"      {model} error: {data['error'].get('message', data['error'])}. Trying next model...")
                     break
-                raw = data["choices"][0]["message"].get("content")
-                if raw is None:
-                    print(f"      {model} returned null content. Trying next model...")
+                raw = data["choices"][0]["message"].get("content") or ""
+                if not raw.strip():
+                    print(f"      {model} returned empty content. Trying next model...")
                     break
-                raw = raw.strip()
-                start = raw.find('{')
-                end = raw.rfind('}')
-                if start == -1 or end == -1:
-                    print(f"      {model} returned no JSON. Trying next model...")
+                try:
+                    result = _repair_and_parse_json(raw.strip())
+                    print(f"      {model} succeeded.")
+                    return result
+                except Exception as err:
+                    print(f"      {model} failed: {err}. Trying next model...")
                     break
-                # Fix trailing commas before } or ] which some models produce
-                clean = re.sub(r',(\s*[}\]])', r'\1', raw[start:end + 1])
-                result = json.loads(clean)
-                print(f"      {model} succeeded.")
-                return result
             except Exception as err:
                 print(f"      {model} failed: {err}. Trying next model...")
                 break
