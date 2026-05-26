@@ -332,16 +332,45 @@ if ('serviceWorker' in navigator) {
   // Strip query params so a refresh doesn't re-trigger
   history.replaceState(null, '', window.location.pathname);
 
-  const textarea = document.getElementById('urls');
-  textarea.value = shared;
-  updateModeBadge();
-
-  // Auto-submit only if passphrase is already saved — otherwise show pre-filled form
   const passphrase = getPassphrase();
+
   if (passphrase) {
-    showStatus('Shared URL detected — submitting...', 'success');
-    setTimeout(() => form.requestSubmit(), 800);
+    // Hide the form entirely — show a minimal processing screen instead
+    document.querySelector('.card-body').style.display = 'none';
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'padding:2rem;text-align:center;color:#e6edf3;font-size:1.1rem;';
+    overlay.innerHTML = '<div id="share-status">Submitting...</div>';
+    document.querySelector('.card').appendChild(overlay);
+
+    const shareStatus = () => document.getElementById('share-status');
+
+    const textarea = document.getElementById('urls');
+    textarea.value = shared;
+
+    fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': passphrase },
+      body: JSON.stringify({ instagram_url: shared, push_to_notion: true, extract_text: true }),
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
+      .then(({ ok, status, data }) => {
+        if (ok && data.status === 'triggered') {
+          shareStatus().textContent = '✓ Processing — check your notes in ~2 min.';
+        } else if (ok && data.status === 'duplicate') {
+          shareStatus().textContent = `✓ Already saved (${data.shortcode}).`;
+        } else if (status === 401) {
+          shareStatus().textContent = '✗ Wrong passphrase. Open the app to update it.';
+        } else {
+          shareStatus().textContent = `✗ ${data.error || 'Something went wrong.'}`;
+        }
+      })
+      .catch(() => { shareStatus().textContent = '✗ Network error. Try again.'; });
+
   } else {
+    // No passphrase saved — show the form pre-filled so they can enter it
+    const textarea = document.getElementById('urls');
+    textarea.value = shared;
+    updateModeBadge();
     showStatus('URL pre-filled. Enter your passphrase and hit Convert.', 'success');
     passphraseGroup.classList.remove('hidden');
     passphraseInput.focus();
