@@ -86,3 +86,21 @@ Each new source = a new repo with its own `process.py` + workflow. Worker can st
 - Telegram bot notification on completion
 - Per-tag note index (`_index.md`) auto-updated on each commit
 - Content-type-aware formatting (recipe → ingredient table, workout → exercise table)
+
+---
+
+### Notion Image Storage — Fix Needed
+
+**Problem:** `notion_push.py` uploads carousel slides directly to Notion via the file upload API (`v1/file_uploads`). These are the only permanent copy of the images — they are NOT saved to the GitHub notes repo (only `.md` files are committed there). At 10-15 posts/day with ~12 slides each (~100KB/image), this accumulates ~540MB/month of Notion storage. The free plan has no storage meter and an unclear total cap — likely becomes a problem within 2-3 months.
+
+**Options to consider:**
+
+| Option | What changes | Tradeoff |
+|--------|-------------|----------|
+| Commit images to notes repo alongside `.md`, use GitHub raw URLs in Notion image blocks | `process_post.yml` commits images, `notion_push.py` uses external URL blocks instead of uploads | Zero Notion storage. Images permanently owned. GitHub repo grows instead (~18MB/day). |
+| Stop uploading images to Notion entirely | Remove image upload loop from `notion_push.py` | Simplest fix. Notion pages have text/summary only — no visual. |
+| Periodic cleanup job | GitHub Action that deletes Notion image blocks older than N days | Keeps Notion clean but images are gone after N days. Complex to build. |
+
+**Recommended:** Option 1 (commit to notes repo + external URLs). Images stay permanently accessible in the private repo, Notion pages still show the carousel visually, and Notion storage stays at zero.
+
+**Files to change:** `scripts/notion_push.py`, `.github/workflows/process_post.yml`
