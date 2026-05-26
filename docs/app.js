@@ -52,7 +52,14 @@ document.getElementById("extract-text-toggle").addEventListener("change", functi
   document.getElementById("toggle-hint").textContent = this.checked
     ? "Full note + GitHub backup"
     : "Metadata · 1 AI call";
+  localStorage.setItem("extract_text", this.checked ? "true" : "false");
 });
+
+// Restore saved toggle preference
+const savedExtract = localStorage.getItem("extract_text");
+if (savedExtract !== null) {
+  document.getElementById("extract-text-toggle").checked = savedExtract === "true";
+}
 
 // On load — if passphrase already saved, hide the field
 if (localStorage.getItem("passphrase")) {
@@ -361,7 +368,7 @@ if ('serviceWorker' in navigator) {
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Access-Key': passphrase },
-      body: JSON.stringify({ instagram_url: shared, push_to_notion: true, extract_text: true }),
+      body: JSON.stringify({ instagram_url: shared, push_to_notion: true, extract_text: localStorage.getItem("extract_text") !== "false" }),
     })
       .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
