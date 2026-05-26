@@ -7,6 +7,7 @@ import json
 import urllib.request
 import requests
 import instaloader
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
@@ -22,6 +23,11 @@ FALLBACK_MODEL = "qwen/qwen3.5-9b"
 FALLBACK_MODEL_2 = "nvidia/nemotron-nano-12b-v1"
 MODELS = [PRIMARY_MODEL, FALLBACK_MODEL, FALLBACK_MODEL_2]
 CHAIN_RETRY_DELAYS = [60, 180]
+OPENROUTER_HEADERS = {
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://github.com/instatomdnotes",
+}
 
 EXTRACTION_PROMPT = """You are extracting content from an Instagram carousel.
 
@@ -38,16 +44,16 @@ Rules:
 - Do NOT summarize. Extract and clean only.
 - Output plain markdown only — no commentary, no preamble"""
 
-METADATA_PROMPT = """Given this extracted Instagram carousel content, return a JSON object with exactly two keys:
+METADATA_PROMPT = """Given this content, return a JSON object with exactly two keys:
 - "title": a concise 5-8 word title describing the core topic (title case, no hashtags)
-- "tags": an array of 3-5 relevant lowercase topic hashtags without the # symbol
+- "tags": an array of 3-5 relevant lowercase topic tags without the # symbol
 
 Return only valid JSON. No explanation, no markdown code block.
 
 Content:
 {content}"""
 
-SUMMARY_PROMPT = """Summarise this Instagram carousel content in 2-3 plain sentences. \
+SUMMARY_PROMPT = """Summarise the following content in 2-3 plain sentences. \
 Capture the core idea and single most useful takeaway. No bullet points, no formatting — plain prose only.
 
 Content:
@@ -103,11 +109,6 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
             "image_url": {"url": f"data:image/jpeg;base64,{encode_image(img_path)}"}
         })
     content.append({"type": "text", "text": IMAGE_ONLY_PROMPT})
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/instatomdnotes",
-    }
     for model in MODELS:
         body = {
             "model": model,
@@ -118,11 +119,11 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
         if any(x in model for x in ("qwen", "deepseek")):
             body["reasoning"] = {"exclude": True}
         retry_delays = [10, 30]
-        for attempt, delay in enumerate(retry_delays + [None]):
+        for _, delay in enumerate(retry_delays + [None]):
             try:
                 resp = requests.post(
                     "https://openrouter.ai/api/v1/chat/completions",
-                    headers=headers, json=body, timeout=60,
+                    headers=OPENROUTER_HEADERS, json=body, timeout=60,
                 )
                 if resp.status_code == 429:
                     if delay is not None:
@@ -209,32 +210,32 @@ def encode_image(path: Path) -> str:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
-def call_openrouter(images: list[Path], model: str) -> str:
-    """Send all images to OpenRouter in a single request. Returns extracted text."""
-    content = []
-    for img_path in images:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{encode_image(img_path)}"}
-        })
-    content.append({"type": "text", "text": EXTRACTION_PROMPT})
+def build_image_content(images: list[Path]) -> list:
+    """Encode all images to base64 once. Returns the OpenRouter content list."""
+    content = [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encode_image(p)}"}}
+        for p in images
+    ]
+    return content
 
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/instatomdnotes",
-    }
+
+def call_openrouter(encoded_content: list, model: str) -> str:
+    """Send pre-encoded image content to OpenRouter. Returns extracted text."""
+    content = encoded_content + [{"type": "text", "text": EXTRACTION_PROMPT}]
+
     body = {
         "model": model,
         "messages": [{"role": "user", "content": content}],
         "max_tokens": 4096,
     }
+    if any(x in model for x in ("qwen", "deepseek")):
+        body["reasoning"] = {"exclude": True}
 
     retry_delays = [10, 30, 60]
-    for attempt, delay in enumerate(retry_delays + [None]):
+    for _, delay in enumerate(retry_delays + [None]):
         resp = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
+            headers=OPENROUTER_HEADERS,
             json=body,
             timeout=60,
         )
@@ -244,7 +245,7 @@ def call_openrouter(images: list[Path], model: str) -> str:
 
         if resp.status_code == 429:
             if delay is not None:
-                print(f"      Rate limited (429). Retrying in {delay}s... (attempt {attempt + 1}/{len(retry_delays)})")
+                print(f"      Rate limited (429). Retrying in {delay}s...")
                 time.sleep(delay)
                 continue
             raise RuntimeError(f"Rate limited after {len(retry_delays)} retries.")
@@ -255,61 +256,49 @@ def call_openrouter(images: list[Path], model: str) -> str:
         if "error" in data:
             raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
 
-        return data["choices"][0]["message"]["content"]
+        raw = data["choices"][0]["message"].get("content") or ""
+        if not raw.strip():
+            raise RuntimeError(f"{model} returned empty content.")
+        return raw
+
+
+def _text_call(prompt: str, max_tokens: int) -> str:
+    """Single OpenRouter text call with fallback models. Returns raw response string."""
+    for model in MODELS:
+        body = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+        }
+        if any(x in model for x in ("qwen", "deepseek")):
+            body["reasoning"] = {"exclude": True}
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=OPENROUTER_HEADERS,
+                json=body,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if "error" in data:
+                raise RuntimeError(data['error'].get('message', data['error']))
+            raw = data["choices"][0]["message"].get("content") or ""
+            if not raw.strip():
+                raise RuntimeError("empty content")
+            return raw.strip()
+        except Exception as err:
+            print(f"      {model} failed: {err}. Trying next model...")
+    raise RuntimeError("All models failed.")
 
 
 def get_metadata(content: str) -> dict:
-    prompt = METADATA_PROMPT.format(content=content[:3000])
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/instatomdnotes",
-    }
-    body = {
-        "model": PRIMARY_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 200,
-    }
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=body,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if "error" in data:
-        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-    raw = data["choices"][0]["message"]["content"].strip()
-    if "```" in raw:
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
+    raw = _text_call(METADATA_PROMPT.format(content=content[:3000]), max_tokens=200)
+    return _repair_and_parse_json(raw)
 
 
 def get_summary(content: str) -> str:
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/instatomdnotes",
-    }
-    body = {
-        "model": PRIMARY_MODEL,
-        "messages": [{"role": "user", "content": SUMMARY_PROMPT.format(content=content[:3000])}],
-        "max_tokens": 150,
-    }
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers=headers,
-        json=body,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if "error" in data:
-        raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-    return data["choices"][0]["message"]["content"].strip()
+    return _text_call(SUMMARY_PROMPT.format(content=content[:3000]), max_tokens=150)
 
 
 def title_to_filename(title: str) -> str:
@@ -423,6 +412,7 @@ def process_instagram():
         sys.exit(1)
 
     print(f"[2/5] Extracting text via {PRIMARY_MODEL}...")
+    encoded_content = build_image_content(images)
     extracted = None
     for attempt, delay in enumerate([None] + CHAIN_RETRY_DELAYS):
         if delay is not None:
@@ -430,7 +420,7 @@ def process_instagram():
             time.sleep(delay)
         for model in MODELS:
             try:
-                extracted = call_openrouter(images, model)
+                extracted = call_openrouter(encoded_content, model)
                 print(f"      {model} succeeded.")
                 break
             except Exception as err:
@@ -480,22 +470,6 @@ def process_instagram():
     )
 
 
-TEXT_METADATA_PROMPT = """Given this text content, return a JSON object with exactly two keys:
-- "title": a concise 5-8 word title describing the core topic (title case, no hashtags)
-- "tags": an array of 3-5 relevant lowercase topic tags without the # symbol
-
-Return only valid JSON. No explanation, no markdown code block.
-
-Content:
-{content}"""
-
-TEXT_SUMMARY_PROMPT = """Summarise the following content in 2-3 plain sentences. \
-Capture the core idea and single most useful takeaway. No bullet points, no formatting — plain prose only.
-
-Content:
-{content}"""
-
-
 def extract_urls_from_text(text: str) -> list[str]:
     found = re.findall(r'https?://[^\s\)"\'<>]+', text)
     seen = set()
@@ -539,7 +513,12 @@ def process_urls():
         pending_path.write_text("# Pending to Read\n\n" + new_items + "\n", encoding="utf-8")
     print(f"[DONE] Appended {len(urls)} URL(s) to {pending_path}")
     print(f"      Fetching page titles for Notion...")
-    url_entries = [{"url": u, "title": fetch_title(u)} for u in urls]
+    url_entries = [None] * len(urls)
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        futures = {ex.submit(fetch_title, u): i for i, u in enumerate(urls)}
+        for future in as_completed(futures):
+            i = futures[future]
+            url_entries[i] = {"url": urls[i], "title": future.result()}
     Path("/tmp/metadata.json").write_text(
         json.dumps({"mode": "urls", "urls": url_entries}),
         encoding="utf-8",
@@ -554,53 +533,17 @@ def process_text():
     embedded_urls = extract_urls_from_text(CONTENT)
     print(f"      Found {len(embedded_urls)} embedded URL(s)")
     print("[2/4] Getting title, tags and summary via AI...")
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/instatomdnotes",
-    }
     title = "Untitled Note"
     tags = ["notes"]
     try:
-        body = {
-            "model": PRIMARY_MODEL,
-            "messages": [{"role": "user", "content": TEXT_METADATA_PROMPT.format(content=CONTENT[:3000])}],
-            "max_tokens": 200,
-        }
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers, json=body, timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if "error" in data:
-            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-        raw = data["choices"][0]["message"]["content"].strip()
-        if "```" in raw:
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        metadata = json.loads(raw.strip())
+        metadata = get_metadata(CONTENT)
         title = metadata.get("title", "Untitled Note")
         tags = metadata.get("tags", ["notes"])
     except Exception as e:
         print(f"      Metadata call failed: {e} — using defaults")
     summary = ""
     try:
-        body = {
-            "model": PRIMARY_MODEL,
-            "messages": [{"role": "user", "content": TEXT_SUMMARY_PROMPT.format(content=CONTENT[:3000])}],
-            "max_tokens": 150,
-        }
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers, json=body, timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if "error" in data:
-            raise RuntimeError(f"OpenRouter error: {data['error'].get('message', data['error'])}")
-        summary = data["choices"][0]["message"]["content"].strip()
+        summary = get_summary(CONTENT)
         print("      Summary generated.")
     except Exception as e:
         print(f"      Summary call failed: {e} — skipping")
