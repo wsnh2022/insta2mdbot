@@ -62,6 +62,9 @@ export default {
         return jsonResponse({ error: "Unauthorized" }, 401, corsOrigin);
       }
       clearFailedAttempts(ip);
+      if (isRateLimited()) {
+        return jsonResponse({ error: "Too many requests. Try again in a minute." }, 429, corsOrigin);
+      }
       const runsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/runs?per_page=1`;
       const runsResp = await fetch(runsUrl, {
         headers: {
@@ -131,7 +134,7 @@ export default {
       return jsonResponse({ error: "Invalid JSON body" }, 400, corsOrigin);
     }
 
-    const { instagram_url, mode, content, push_to_notion, extract_text } = body;
+    const { instagram_url, mode, content, push_to_notion, extract_text, notion_title_override } = body;
 
     let workflowInputs;
 
@@ -168,6 +171,9 @@ export default {
         instagram_url: cleanUrl,
         push_to_notion: push_to_notion === true ? "true" : "false",
         extract_text: extract_text === false ? "false" : "true",
+        ...(notion_title_override && typeof notion_title_override === "string"
+          ? { notion_title_override: notion_title_override.trim() }
+          : {}),
       };
 
     } else if (mode === "urls" || mode === "text") {
