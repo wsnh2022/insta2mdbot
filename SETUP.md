@@ -304,6 +304,65 @@ Free GitHub Pages requires a public repo, so the code is public. To keep notes p
 
 ---
 
+## Deploying Updates and Rolling Back
+
+### Verifying a new deployment
+
+After pushing to main and redeploying the Worker, submit one Instagram post through the form and check the GitHub Actions run log under the **Run processor** step.
+
+**Signs the update is working correctly:**
+
+| What you see in the log | Meaning |
+|---|---|
+| `google/gemini-2.5-flash-lite succeeded.` | Primary model worked first try |
+| `qwen/qwen3.5-9b failed: ... Trying next model...` then a success line | Fallback chain working as expected |
+| `pip install` step shows `Using cached ...` on a second run | pip cache active, saving ~25s |
+| Note appears in notes repo with a real title (not a shortcode) | Full pipeline end-to-end healthy |
+
+**Warning signs that something regressed:**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Worker returns 500 on status polls | GET rate limit misconfigured | Revert `worker/index.js` and redeploy |
+| `All models failed` on posts that worked before | `_text_call` or `_repair_and_parse_json` regression | Check Actions log for raw model output, revert `scripts/process.py` |
+| Note saves but title is the raw shortcode | `get_metadata` fallback chain silently failing | Check Actions log for model error messages |
+| URL mode: metadata.json has wrong/missing titles | `ThreadPoolExecutor` fetch_title regression | Revert `scripts/process.py` |
+| `Invalid JSON body` on form submission | Worker change broke request parsing | Revert `worker/index.js` and redeploy |
+
+---
+
+### Rolling back
+
+Every production change goes through main. Rolling back means reverting the merge commit and redeploying.
+
+**Full rollback (both Python and Worker):**
+```powershell
+git revert HEAD --no-edit
+git push
+# then double-click redeploy.bat
+```
+
+**Partial rollback — Python script only** (Worker is fine):
+```powershell
+git show HEAD~1:scripts/process.py > scripts/process.py
+git add scripts/process.py
+git commit -m "revert: restore previous process.py"
+git push
+```
+
+**Partial rollback — Worker only** (Python is fine):
+```powershell
+git show HEAD~1:worker/index.js > worker/index.js
+git add worker/index.js
+git commit -m "revert: restore previous worker/index.js"
+git push
+# then double-click redeploy.bat
+```
+
+`git show HEAD~1:<file>` extracts the previous version of a single file without touching anything else — main stays intact and rollback is one commit.
+
+---
+
 ## Security Hardening
 
 The following security improvements have been applied. Run `redeploy.bat` after any Worker change.
