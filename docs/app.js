@@ -55,7 +55,7 @@ document.getElementById("extract-text-toggle").addEventListener("change", functi
 });
 
 // On load — if passphrase already saved, hide the field
-if (sessionStorage.getItem("passphrase")) {
+if (localStorage.getItem("passphrase")) {
   showPassphraseSaved();
 }
 
@@ -88,13 +88,13 @@ function showPassphraseSaved() {
 function collapsePassphrase() {
   const val = passphraseInput.value.trim();
   if (!val) return;
-  sessionStorage.setItem("passphrase", val);
+  localStorage.setItem("passphrase", val);
   showPassphraseSaved();
   document.getElementById("urls").focus();
 }
 
 function getPassphrase() {
-  return passphraseInput.value.trim() || sessionStorage.getItem("passphrase") || "";
+  return passphraseInput.value.trim() || localStorage.getItem("passphrase") || "";
 }
 
 function isUrl(s) {
