@@ -342,7 +342,9 @@ if ('serviceWorker' in navigator) {
   const passphrase = getPassphrase();
 
   if (passphrase) {
-    // Replace entire screen with a centered popup-style card
+    const { mode: shareMode } = detectMode(shared);
+    const shareIcon = shareMode === 'instagram' ? '📸' : shareMode === 'urls' ? '🔗' : '✏️';
+
     document.body.innerHTML = `
       <div style="
         position:fixed;inset:0;background:#0d1117;
@@ -353,7 +355,7 @@ if ('serviceWorker' in navigator) {
           background:#161b22;border:1px solid #30363d;border-radius:14px;
           padding:2rem 1.75rem;width:260px;text-align:center;
         ">
-          <div style="font-size:2rem;margin-bottom:0.75rem;">📸</div>
+          <div style="font-size:2rem;margin-bottom:0.75rem;">${shareIcon}</div>
           <div style="color:#8b949e;font-size:0.8rem;margin-bottom:1rem;">instatomdnotes</div>
           <div id="share-msg" style="color:#e6edf3;font-size:1rem;line-height:1.5;">Submitting...</div>
           <div id="share-sub" style="color:#8b949e;font-size:0.75rem;margin-top:0.5rem;"></div>
@@ -365,15 +367,24 @@ if ('serviceWorker' in navigator) {
       document.getElementById('share-sub').textContent = sub;
     };
 
+    const sharePayload = shareMode === 'instagram'
+      ? { instagram_url: shared, push_to_notion: true, extract_text: localStorage.getItem("extract_text") !== "false" }
+      : { mode: shareMode, content: shared };
+
     fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Access-Key': passphrase },
-      body: JSON.stringify({ instagram_url: shared, push_to_notion: true, extract_text: localStorage.getItem("extract_text") !== "false" }),
+      body: JSON.stringify(sharePayload),
     })
       .then(r => r.json().then(data => ({ ok: r.ok, status: r.status, data })))
       .then(({ ok, status, data }) => {
         if (ok && data.status === 'triggered') {
-          setMsg('✓ Queued', 'Note ready in ~2 min. You can close this.');
+          const sub = shareMode === 'instagram'
+            ? 'Note ready in ~2 min. You can close this.'
+            : shareMode === 'urls'
+            ? 'Added to reading list. You can close this.'
+            : 'Note ready in ~1 min. You can close this.';
+          setMsg('✓ Queued', sub);
           setTimeout(() => window.close(), 3000);
         } else if (ok && data.status === 'duplicate') {
           setMsg('✓ Already saved', `${data.shortcode} was processed before.`);

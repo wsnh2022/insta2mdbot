@@ -239,3 +239,11 @@ button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
   color: #484f58;
 }
 
+.version {
+  font-size: 0.6rem;
+  color: #30363d;
+  text-align: right;
+  margin-top: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
