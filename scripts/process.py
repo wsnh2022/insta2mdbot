@@ -6,7 +6,7 @@ import base64
 import json
 import urllib.request
 import requests
-import subprocess
+import instaloader
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -157,23 +157,36 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
-    """Download carousel images to tmp_dir using gallery-dl. Returns sorted list of image paths."""
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(
-        ["gallery-dl", "-d", str(tmp_dir), "--no-mtime", url],
-        capture_output=True,
-        text=True,
-        timeout=120,
+    """Download carousel images to tmp_dir. Returns sorted list of image paths."""
+    loader = instaloader.Instaloader(
+        download_video_thumbnails=False,
+        download_geotags=False,
+        download_comments=False,
+        save_metadata=False,
+        compress_json=False,
+        post_metadata_txt_pattern="",
+        filename_pattern="{shortcode}_{mediaid}",
     )
-    images = []
-    for ext in ("jpg", "jpeg", "png", "webp"):
-        images.extend(tmp_dir.rglob(f"*.{ext}"))
-    images = sorted(set(images))
-    if not images:
-        raise RuntimeError(
-            f"gallery-dl downloaded no images.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    shortcode = url.rstrip("/").split("/")[-1]
+    post = instaloader.Post.from_shortcode(loader.context, shortcode)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    if post.typename == "GraphSidecar":
+        count = 0
+        for node in post.get_sidecar_nodes():
+            if not node.is_video:
+                loader.download_pic(
+                    filename=str(tmp_dir / f"slide_{count:02d}"),
+                    url=node.display_url,
+                    mtime=post.date_local,
+                )
+                count += 1
+    else:
+        loader.download_pic(
+            filename=str(tmp_dir / "slide_00"),
+            url=post.url,
+            mtime=post.date_local,
         )
-    return images
+    return sorted(tmp_dir.glob("*.jpg"))
 
 
 def resize_image(path: Path, max_px: int = 768) -> Path:
