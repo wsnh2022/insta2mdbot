@@ -33,7 +33,10 @@ on:
 
 jobs:
   process:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: read
 
@@ -72,7 +75,7 @@ jobs:
         id: check_dup
         if: always()
         run: |
-          if [ -f /tmp/is_duplicate ]; then
+          if [ -f "$RUNNER_TEMP/is_duplicate" ]; then
             echo "is_duplicate=true" >> $GITHUB_OUTPUT
           else
             echo "is_duplicate=false" >> $GITHUB_OUTPUT

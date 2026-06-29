@@ -7,6 +7,7 @@ import json
 import urllib.request
 import requests
 import subprocess
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
@@ -17,6 +18,7 @@ INSTAGRAM_URL = os.environ.get("INSTAGRAM_URL", "")
 MODE = os.environ.get("MODE", "instagram").strip().lower()
 CONTENT = os.environ.get("CONTENT", "")
 NOTES_DIR = Path("notes")
+TMP = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir()))
 EXTRACT_TEXT = os.environ.get("EXTRACT_TEXT", "true").strip().lower() != "false"
 PRIMARY_MODEL = "google/gemini-2.5-flash-lite"
 FALLBACK_MODEL = "qwen/qwen3.5-9b"
@@ -175,9 +177,9 @@ def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
 
 
 def resize_image(path: Path, max_px: int = 768) -> Path:
-    resized_dir = Path("/tmp/insta_resized")
+    resized_dir = TMP / "insta_resized"
     resized_dir.mkdir(exist_ok=True)
-    out = resized_dir / path.name
+    out = resized_dir / (path.stem + ".jpg")
     img = Image.open(path)
     img.thumbnail((max_px, max_px), Image.LANCZOS)
     img.save(out, "JPEG", quality=85)
@@ -298,13 +300,13 @@ def build_markdown(url: str, extracted: str, title: str, tags: list, summary: st
 
 
 def process_instagram():
-    tmp_dir = Path("/tmp/insta_download")
+    tmp_dir = TMP / "insta_download"
     shortcode = INSTAGRAM_URL.rstrip("/").split("/")[-1]
     processed_log = NOTES_DIR / "_processed.txt"
 
     if not EXTRACT_TEXT:
         if processed_log.exists() and shortcode in processed_log.read_text(encoding="utf-8").splitlines():
-            Path("/tmp/is_duplicate").write_text("1", encoding="utf-8")
+            (TMP / "is_duplicate").write_text("1", encoding="utf-8")
             print(f"[SKIP] Already processed: {shortcode}")
             sys.exit(0)
         print(f"[MODE] images only — skipping text extraction")
@@ -333,7 +335,7 @@ def process_instagram():
         with open(processed_log, "a", encoding="utf-8") as f:
             f.write(shortcode + "\n")
         print(f"[3/3] Writing metadata for Notion...")
-        Path("/tmp/metadata.json").write_text(
+        (TMP / "metadata.json").write_text(
             json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": ""}),
             encoding="utf-8",
         )
@@ -341,7 +343,7 @@ def process_instagram():
 
     if processed_log.exists():
         if shortcode in processed_log.read_text(encoding="utf-8").splitlines():
-            Path("/tmp/is_duplicate").write_text("1", encoding="utf-8")
+            (TMP / "is_duplicate").write_text("1", encoding="utf-8")
             print(f"[NOTION] Already processed: {shortcode} — re-downloading for Notion push only")
             try:
                 images = download_carousel(INSTAGRAM_URL, tmp_dir)
@@ -370,7 +372,7 @@ def process_instagram():
                     if sm:
                         summary = " ".join(re.findall(r'^>\s*(.+)$', sm.group(1), re.MULTILINE)).strip()
                     extracted = re.sub(r'>\s*\[!summary\]\n(?:>.*\n?)+', '', body).strip()
-            Path("/tmp/metadata.json").write_text(
+            (TMP / "metadata.json").write_text(
                 json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
                 encoding="utf-8",
             )
@@ -443,7 +445,7 @@ def process_instagram():
         f.write(shortcode + "\n")
     print(f"[5/5] Saved: {note_path}")
 
-    Path("/tmp/metadata.json").write_text(
+    (TMP / "metadata.json").write_text(
         json.dumps({"mode": "instagram", "title": title, "tags": tags, "summary": summary, "url": INSTAGRAM_URL, "extracted": extracted}),
         encoding="utf-8",
     )
@@ -498,7 +500,7 @@ def process_urls():
         for future in as_completed(futures):
             i = futures[future]
             url_entries[i] = {"url": urls[i], "title": future.result()}
-    Path("/tmp/metadata.json").write_text(
+    (TMP / "metadata.json").write_text(
         json.dumps({"mode": "urls", "urls": url_entries}),
         encoding="utf-8",
     )
@@ -538,7 +540,7 @@ def process_text():
     note_path.parent.mkdir(parents=True, exist_ok=True)
     note_path.write_text(note_md, encoding="utf-8")
     print(f"[4/4] Saved: {note_path}")
-    Path("/tmp/metadata.json").write_text(
+    (TMP / "metadata.json").write_text(
         json.dumps({"mode": "text", "title": title, "tags": tags, "summary": summary, "extracted": note_body}),
         encoding="utf-8",
     )

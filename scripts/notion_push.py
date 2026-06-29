@@ -3,6 +3,7 @@ import sys
 import json
 import re
 import time
+import tempfile
 import requests
 from pathlib import Path
 from datetime import datetime
@@ -12,8 +13,9 @@ NOTION_DATABASE_ID = os.environ["NOTION_DATABASE_ID"]
 NOTION_READING_LIST_DB_ID = os.environ.get("NOTION_READING_LIST_DB_ID", "").strip()
 NOTION_TEXT_NOTES_DB_ID = os.environ.get("NOTION_TEXT_NOTES_DB_ID", "").strip()
 NOTION_TITLE_OVERRIDE = os.environ.get("NOTION_TITLE_OVERRIDE", "").strip()
-METADATA_PATH = Path("/tmp/metadata.json")
-IMAGES_DIR = Path("/tmp/insta_download")
+TMP = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir()))
+METADATA_PATH = TMP / "metadata.json"
+IMAGES_DIR = TMP / "insta_resized"
 GITHUB_STEP_SUMMARY = os.environ.get("GITHUB_STEP_SUMMARY", "")
 
 HEADERS = {
