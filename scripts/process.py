@@ -6,7 +6,7 @@ import base64
 import json
 import urllib.request
 import requests
-import instaloader
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
@@ -155,44 +155,23 @@ def get_metadata_and_summary_from_images(images: list[Path]) -> dict:
 
 
 def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
-    """Download carousel images to tmp_dir. Returns sorted list of image paths."""
-    loader = instaloader.Instaloader(
-        download_video_thumbnails=False,
-        download_geotags=False,
-        download_comments=False,
-        save_metadata=False,
-        compress_json=False,
-        post_metadata_txt_pattern="",
-        filename_pattern="{shortcode}_{mediaid}",
-    )
-    session_id = os.environ.get("INSTAGRAM_SESSION_ID", "")
-    if session_id:
-        loader.context._session.cookies.set(
-            "sessionid", session_id, domain=".instagram.com"
-        )
-    shortcode = url.rstrip("/").split("/")[-1]
-    post = instaloader.Post.from_shortcode(loader.context, shortcode)
-
+    """Download carousel images to tmp_dir using gallery-dl. Returns sorted list of image paths."""
     tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    if post.typename == "GraphSidecar":
-        count = 0
-        for node in post.get_sidecar_nodes():
-            if not node.is_video:
-                loader.download_pic(
-                    filename=str(tmp_dir / f"slide_{count:02d}"),
-                    url=node.display_url,
-                    mtime=post.date_local,
-                )
-                count += 1
-    else:
-        loader.download_pic(
-            filename=str(tmp_dir / "slide_00"),
-            url=post.url,
-            mtime=post.date_local,
+    result = subprocess.run(
+        ["gallery-dl", "-d", str(tmp_dir), "--no-mtime", url],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    images = []
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        images.extend(tmp_dir.rglob(f"*.{ext}"))
+    images = sorted(set(images))
+    if not images:
+        raise RuntimeError(
+            f"gallery-dl downloaded no images.\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
-
-    return sorted(tmp_dir.glob("*.jpg"))
+    return images
 
 
 def resize_image(path: Path, max_px: int = 768) -> Path:

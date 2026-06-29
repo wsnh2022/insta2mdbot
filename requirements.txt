@@ -1,3 +1,3 @@
-instaloader==4.15.1
+gallery-dl
 requests==2.31.0
 Pillow==10.4.0
