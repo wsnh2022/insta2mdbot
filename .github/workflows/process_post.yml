@@ -34,9 +34,6 @@ on:
 jobs:
   process:
     runs-on: self-hosted
-    defaults:
-      run:
-        shell: bash
     permissions:
       contents: read
 
@@ -74,12 +71,13 @@ jobs:
       - name: Check duplicate status
         id: check_dup
         if: always()
+        shell: pwsh
         run: |
-          if [ -f "$RUNNER_TEMP/is_duplicate" ]; then
-            echo "is_duplicate=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_duplicate=false" >> $GITHUB_OUTPUT
-          fi
+          if (Test-Path "$env:RUNNER_TEMP\is_duplicate") {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "is_duplicate=true"
+          } else {
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "is_duplicate=false"
+          }
 
       - name: Duplicate detected
         if: ${{ steps.check_dup.outputs.is_duplicate == 'true' }}
@@ -96,13 +94,16 @@ jobs:
         run: python scripts/notion_push.py
 
       - name: Commit and push notes
+        shell: pwsh
         run: |
-          cd notes
+          Set-Location notes
           git config user.name "instatomdnotes-bot"
           git config user.email "bot@instatomdnotes"
           git add .
-          git diff --cached --quiet && echo "No new notes to commit" && exit 0
-          MODE="${{ inputs.mode }}"
-          [[ "$MODE" =~ ^(instagram|urls|text)$ ]] || { echo "Invalid mode: $MODE"; exit 1; }
-          git commit -m "note(${MODE}): $(date -u +%Y-%m-%d)"
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { Write-Host "No new notes to commit"; exit 0 }
+          $MODE = "${{ inputs.mode }}"
+          if ($MODE -notmatch '^(instagram|urls|text)$') { Write-Host "Invalid mode: $MODE"; exit 1 }
+          $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+          git commit -m "note($($MODE)): $date"
           git push
