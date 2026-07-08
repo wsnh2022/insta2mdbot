@@ -167,6 +167,10 @@ def download_carousel(url: str, tmp_dir: Path) -> list[Path]:
         post_metadata_txt_pattern="",
         filename_pattern="{shortcode}_{mediaid}",
     )
+    session_id = os.environ.get("INSTAGRAM_SESSION_ID", "").strip()
+    if session_id:
+        loader.context._session.cookies.set("sessionid", session_id, domain=".instagram.com", path="/")
+        print("      Using Instagram session cookie.")
     shortcode = url.rstrip("/").split("/")[-1]
     post = instaloader.Post.from_shortcode(loader.context, shortcode)
     tmp_dir.mkdir(parents=True, exist_ok=True)

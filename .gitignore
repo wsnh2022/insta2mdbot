@@ -1,4 +1,6 @@
 .env
+.env.local
+notes/
 *.session
 __pycache__/
 *.pyc
@@ -8,7 +10,8 @@ node_modules/
 .claude/
 ahk/passphrase.txt
 gitsync.bat 
-deploy-log.txt 
+deploy-log.txt
+queue-runner.log
 .gitsync.lock
 shortcodes.txt
 backfill_log.txt

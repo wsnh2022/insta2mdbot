@@ -65,47 +65,14 @@ export default {
       if (isRateLimited()) {
         return jsonResponse({ error: "Too many requests. Try again in a minute." }, 429, corsOrigin);
       }
-      const runsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/runs?per_page=1`;
-      const runsResp = await fetch(runsUrl, {
-        headers: {
-          "Authorization": `token ${env.GITHUB_PAT}`,
-          "Accept": "application/vnd.github.v3+json",
-          "User-Agent": "instatomdnotes-worker",
-        },
-      });
-      if (!runsResp.ok) {
-        return jsonResponse({ error: "Failed to fetch run status" }, 500, corsOrigin);
+      // Queue status — frontend polls this after submission
+      // in_progress while items are pending; completed once local script clears them
+      const list = await env.QUEUE.list({ prefix: "queue:" });
+      const pending = list.keys.length;
+      if (pending > 0) {
+        return jsonResponse({ status: "in_progress", pending }, 200, corsOrigin);
       }
-      const runsData = await runsResp.json();
-      const run = runsData.workflow_runs?.[0];
-      if (!run) {
-        return jsonResponse({ status: "none", message: "No runs found." }, 200, corsOrigin);
-      }
-      let duplicate = false;
-      if (run.status === "completed" && run.conclusion === "success") {
-        try {
-          const jobsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/runs/${run.id}/jobs`;
-          const jobsResp = await fetch(jobsUrl, {
-            headers: {
-              "Authorization": `token ${env.GITHUB_PAT}`,
-              "Accept": "application/vnd.github.v3+json",
-              "User-Agent": "instatomdnotes-worker",
-            },
-          });
-          if (jobsResp.ok) {
-            const jobsData = await jobsResp.json();
-            const steps = jobsData.jobs?.[0]?.steps || [];
-            const dupStep = steps.find(s => s.name === "Duplicate detected");
-            duplicate = dupStep?.conclusion === "success";
-          }
-        } catch (_) {}
-      }
-      return jsonResponse({
-        status: run.status,
-        conclusion: run.conclusion,
-        run_id: run.id,
-        duplicate,
-      }, 200, corsOrigin);
+      return jsonResponse({ status: "completed", conclusion: "success", duplicate: false }, 200, corsOrigin);
     }
 
     if (request.method !== "POST") {
@@ -136,7 +103,7 @@ export default {
 
     const { instagram_url, mode, content, push_to_notion, extract_text, notion_title_override } = body;
 
-    let workflowInputs;
+    let job;
 
     if (instagram_url) {
       const shortcodeMatch = instagram_url.match(/instagram\.com\/p\/([A-Za-z0-9_-]+)/);
@@ -146,31 +113,19 @@ export default {
       const shortcode = shortcodeMatch[1];
       const cleanUrl = `https://www.instagram.com/p/${shortcode}/`;
 
-      // Pre-check _processed.txt before triggering a workflow
-      try {
-        const contentsUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_NOTES_REPO_NAME}/contents/notes/_processed.txt`;
-        const processedResp = await fetch(contentsUrl, {
-          headers: {
-            "Authorization": `token ${env.GITHUB_PAT}`,
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "instatomdnotes-worker",
-          },
-        });
-        if (processedResp.ok) {
-          const fileData = await processedResp.json();
-          const decoded = atob(fileData.content.replace(/\n/g, ""));
-          const shortcodes = decoded.split("\n").map(s => s.trim()).filter(Boolean);
-          if (shortcodes.includes(shortcode)) {
-            return jsonResponse({ status: "duplicate", shortcode }, 200, corsOrigin);
-          }
-        }
-      } catch (_) { /* if the check fails, fall through and let the workflow handle it */ }
+      // Duplicate check via KV
+      const already = await env.QUEUE.get(`processed:${shortcode}`);
+      if (already) {
+        return jsonResponse({ status: "duplicate", shortcode }, 200, corsOrigin);
+      }
 
-      workflowInputs = {
+      job = {
         mode: "instagram",
-        instagram_url: cleanUrl,
-        push_to_notion: push_to_notion === true ? "true" : "false",
-        extract_text: extract_text === false ? "false" : "true",
+        url: cleanUrl,
+        shortcode,
+        push_to_notion: push_to_notion !== false,
+        extract_text: extract_text !== false,
+        queued_at: new Date().toISOString(),
         ...(notion_title_override && typeof notion_title_override === "string"
           ? { notion_title_override: notion_title_override.trim() }
           : {}),
@@ -183,38 +138,21 @@ export default {
       if (content.length > 10000) {
         return jsonResponse({ error: "content exceeds 10,000 character limit" }, 400, corsOrigin);
       }
-      workflowInputs = { mode, content };
+      job = {
+        mode,
+        content,
+        push_to_notion: true,
+        queued_at: new Date().toISOString(),
+      };
 
     } else {
       return jsonResponse({ error: "Request must include instagram_url, or mode + content" }, 400, corsOrigin);
     }
 
-    const githubApiUrl = `https://api.github.com/repos/${env.GITHUB_REPO_OWNER}/${env.GITHUB_REPO_NAME}/actions/workflows/${env.GITHUB_WORKFLOW_FILE}/dispatches`;
+    const key = `queue:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await env.QUEUE.put(key, JSON.stringify(job));
 
-    const resp = await fetch(githubApiUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `token ${env.GITHUB_PAT}`,
-        "Accept": "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-        "User-Agent": "instatomdnotes-worker",
-      },
-      body: JSON.stringify({
-        ref: env.GITHUB_REF,
-        inputs: workflowInputs,
-      }),
-    });
-
-    if (resp.status === 204) {
-      return jsonResponse({ status: "triggered", message: "Processing started. Check your notes in ~2 minutes." }, 200, corsOrigin);
-    }
-
-    if (resp.status === 401) {
-      return jsonResponse({ error: "GitHub token invalid" }, 500, corsOrigin);
-    }
-
-    const errText = await resp.text();
-    return jsonResponse({ error: `GitHub API error: ${errText}` }, 500, corsOrigin);
+    return jsonResponse({ status: "triggered", message: "Queued for local processing." }, 200, corsOrigin);
   },
 };
 

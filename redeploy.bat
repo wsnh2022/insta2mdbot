@@ -38,11 +38,13 @@ if !errorlevel! neq 0 (
 )
 
 :: Deploy
+set LOG_FILE=%~dp0deploy-log.txt
 echo [INFO] Deploying worker...
 echo.
 cd /d "%~dp0worker"
-npx wrangler deploy
+npx wrangler deploy > "%LOG_FILE%" 2>&1
 set DEPLOY_EXIT=!errorlevel!
+type "%LOG_FILE%"
 
 echo.
 if !DEPLOY_EXIT! equ 0 (
