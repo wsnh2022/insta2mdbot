@@ -1,5 +1,7 @@
 # PRD: Local Processing via Cloudflare KV Queue
 
+> **Status: Abandoned.** This migration was never finished or deployed. The project was archived instead of completing it, see [README.md](README.md) for why. Kept here as a historical record of the plan.
+
 ## Problem
 GitHub Actions self-hosted runner on Windows has blocking issues (PowerShell execution policy, WSL/bash conflicts) that prevent the Instagram carousel processing workflow from running reliably.
 
