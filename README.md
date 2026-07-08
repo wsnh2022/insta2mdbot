@@ -1,3 +1,12 @@
+> ## ⚠️ Archived
+> This project is no longer maintained or hosted. GitHub Pages and the self-hosted Actions runner have been shut down.
+>
+> **Why:** the GitHub Actions self-hosted runner (Windows) started failing on every run with a PowerShell execution policy error (`running scripts is disabled on this system`), blocking the workflow before it could even download anything. Separately, Instagram was actively blocking anonymous carousel downloads via `instaloader`, causing frequent failures even when the runner worked.
+>
+> A migration to a local Cloudflare KV queue (Worker writes jobs to KV, a local `process_queue.py` drains them instead of GitHub Actions) was started to fix the runner issue, documented in [PRD.md](PRD.md). That migration was never finished or deployed. Rather than complete it, the project was archived since it's no longer needed.
+>
+> The rest of this README reflects the last working architecture (GitHub Actions based) for reference.
+
 ![cover](docs/cover.png)
 # Insta2mdbot
 
